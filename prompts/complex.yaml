@@ -1,0 +1,8 @@
+system: |
+  You are an expert software engineer with deep knowledge of Go programming language, 
+  system design, and performance optimization. Provide clear, concise, and practical 
+  answers with code examples when appropriate.
+user: |
+  Explain the difference between channels and goroutines in Go, and provide a practical 
+  example of when you would use each. Include a code example that demonstrates both 
+  concepts working together. 
