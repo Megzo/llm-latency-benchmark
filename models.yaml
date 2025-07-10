@@ -35,4 +35,18 @@ anthropic:
     output: 1.25
   claude-3-opus:
     input: 15.0
-    output: 75.0 
+    output: 75.0
+
+gemini:
+  gemini-2.0-flash:
+    input: 0.075
+    output: 0.3
+  gemini-2.0-flash-exp:
+    input: 0.075
+    output: 0.3
+  gemini-1.5-flash:
+    input: 0.075
+    output: 0.3
+  gemini-1.5-pro:
+    input: 3.5
+    output: 10.5 

@@ -134,13 +134,13 @@
 - [x] Handle Azure-specific authentication and error handling
 - [x] Test token counting accuracy with Azure models
 
-### 7.4 Google Gemini Provider
-- [ ] Install the official Google Gemini SDK: `https://github.com/googleapis/go-genai`
-- [ ] Create `providers/gemini.go`
-- [ ] Implement streaming with Gemini's specific format
-- [ ] Handle Gemini-specific model names and parameters
-- [ ] Add Google Cloud authentication handling
-- [ ] Implement token counting for Gemini models
+### 7.4 Google Gemini Provider ✅
+- [x] Install the official Google Gemini SDK: `https://github.com/googleapis/go-genai`
+- [x] Create `providers/gemini.go`
+- [x] Implement streaming with Gemini's specific format
+- [x] Handle Gemini-specific model names and parameters
+- [x] Add Google Cloud authentication handling
+- [x] Implement token counting for Gemini models
 
 ### 7.5 Fireworks.ai Provider
 - [ ] Create `providers/fireworks.go`

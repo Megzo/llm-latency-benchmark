@@ -97,6 +97,16 @@ func (f *ProviderFactory) createProvider(providerName string) (Provider, error) 
 		}
 		return NewAzureOpenAIProvider(config)
 
+	case "gemini":
+		config, ok := f.configs[providerName].(*GeminiConfig)
+		if !ok {
+			return nil, &ConfigurationError{
+				Field:   "gemini_config",
+				Message: "Gemini configuration not found or invalid",
+			}
+		}
+		return NewGeminiProvider(config)
+
 	default:
 		return nil, &ConfigurationError{
 			Field:   "provider_name",
@@ -119,5 +129,6 @@ func (f *ProviderFactory) GetAvailableProviders() []string {
 		"groq",
 		"anthropic",
 		"azure_openai",
+		"gemini",
 	}
 } 

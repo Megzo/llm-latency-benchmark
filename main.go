@@ -83,6 +83,7 @@ func main() {
 	factory.RegisterConfig("groq", cfg.GetGroqConfig())
 	factory.RegisterConfig("anthropic", cfg.GetAnthropicConfig())
 	factory.RegisterConfig("azure_openai", cfg.GetAzureOpenAIConfig())
+	factory.RegisterConfig("gemini", cfg.GetGeminiConfig())
 	
 	// Create provider instances for all configured providers
 	providerMap := make(map[string]providers.Provider)
@@ -145,6 +146,21 @@ func main() {
 		}
 	} else {
 		fmt.Printf("No Azure OpenAI configuration found (requires AZURE_OPENAI_API_KEY and AZURE_OPENAI_ENDPOINT)\n")
+	}
+	
+	// Initialize Gemini provider if API key is available
+	fmt.Printf("Checking Google API key...\n")
+	if cfg.GoogleAPIKey != "" {
+		fmt.Printf("Google API key found, creating Gemini provider...\n")
+		provider, err := factory.GetProvider("gemini")
+		if err != nil {
+			log.Printf("Warning: Failed to create Gemini provider: %v", err)
+		} else {
+			providerMap["gemini"] = provider
+			fmt.Printf("Gemini provider created successfully\n")
+		}
+	} else {
+		fmt.Printf("No Google API key found\n")
 	}
 	
 	if len(providerMap) == 0 {
@@ -250,6 +266,7 @@ Configuration:
     AZURE_OPENAI_API_KEY=your-azure-api-key
     AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
     # AZURE_OPENAI_API_VERSION=2024-02-15-preview
+    GOOGLE_API_KEY=your-google-api-key
 
   The models.yaml file contains pricing information for different models.
 `, version)

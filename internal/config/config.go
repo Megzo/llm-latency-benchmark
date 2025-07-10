@@ -17,6 +17,7 @@ type Config struct {
 	GroqAPIKey      string
 	AnthropicAPIKey string
 	AzureOpenAIAPIKey string
+	GoogleAPIKey    string
 
 	// Provider Base URLs
 	OpenAIBaseURL    string
@@ -52,6 +53,7 @@ func LoadConfig(modelsFile string) (*Config, error) {
 		GroqAPIKey:      os.Getenv("GROQ_API_KEY"),
 		AnthropicAPIKey: os.Getenv("ANTHROPIC_API_KEY"),
 		AzureOpenAIAPIKey: os.Getenv("AZURE_OPENAI_API_KEY"),
+		GoogleAPIKey:    os.Getenv("GOOGLE_API_KEY"),
 
 		OpenAIBaseURL:    getEnvOrDefault("OPENAI_BASE_URL", "https://api.openai.com/v1"),
 		GroqBaseURL:      getEnvOrDefault("GROQ_BASE_URL", "https://api.groq.com/openai/v1"),
@@ -137,6 +139,13 @@ func (c *Config) GetAzureOpenAIConfig() *providers.AzureOpenAIConfig {
 		Endpoint:       c.AzureOpenAIEndpoint,
 		APIKey:         c.AzureOpenAIAPIKey,
 		APIVersion:     c.AzureOpenAIAPIVersion,
+	}
+}
+
+// GetGeminiConfig returns Gemini provider configuration
+func (c *Config) GetGeminiConfig() *providers.GeminiConfig {
+	return &providers.GeminiConfig{
+		APIKey: c.GoogleAPIKey,
 	}
 }
 
