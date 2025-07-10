@@ -61,15 +61,41 @@ func TestProviderFactory_GetProviderWithConfig(t *testing.T) {
 	assert.NotNil(t, provider)
 }
 
+func TestProviderFactory_GetAzureOpenAIProvider(t *testing.T) {
+	factory := NewProviderFactory()
+
+	// Register Azure OpenAI config
+	config := &AzureOpenAIConfig{
+		Endpoint:       "https://test.openai.azure.com/",
+		APIKey:         "test-key",
+		APIVersion:     "2024-02-15-preview",
+		DeploymentName: "test-deployment",
+	}
+	factory.RegisterConfig("azure_openai", config)
+
+	// Test creating provider with valid config
+	provider, err := factory.GetProvider("azure_openai")
+	assert.NoError(t, err)
+	assert.NotNil(t, provider)
+	assert.Equal(t, "azure_openai", provider.Name())
+
+	// Test creating provider again (should return cached instance)
+	provider2, err := factory.GetProvider("azure_openai")
+	assert.NoError(t, err)
+	assert.NotNil(t, provider2)
+	assert.Equal(t, provider, provider2) // Should be the same instance
+}
+
 func TestProviderFactory_GetAvailableProviders(t *testing.T) {
 	factory := NewProviderFactory()
 
 	// Check available providers
 	providers := factory.GetAvailableProviders()
-	assert.Len(t, providers, 3)
+	assert.Len(t, providers, 4)
 	assert.Contains(t, providers, "openai")
 	assert.Contains(t, providers, "groq")
 	assert.Contains(t, providers, "anthropic")
+	assert.Contains(t, providers, "azure_openai")
 }
 
 func TestProviderFactory_ClearProviders(t *testing.T) {

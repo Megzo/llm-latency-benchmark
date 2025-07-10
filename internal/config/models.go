@@ -12,6 +12,7 @@ type ModelsConfig struct {
 	OpenAI   map[string]ModelPricing `yaml:"openai"`
 	Groq     map[string]ModelPricing `yaml:"groq"`
 	Anthropic map[string]ModelPricing `yaml:"anthropic"`
+	AzureOpenAI map[string]ModelPricing `yaml:"azure_openai"`
 }
 
 // ModelPricing holds the pricing information for a specific model
@@ -46,6 +47,8 @@ func (c *ModelsConfig) GetModelPricing(provider, model string) (*ModelPricing, e
 		pricing = c.Groq
 	case "anthropic":
 		pricing = c.Anthropic
+	case "azure_openai":
+		pricing = c.AzureOpenAI
 	default:
 		return nil, fmt.Errorf("unknown provider: %s", provider)
 	}
@@ -75,6 +78,8 @@ func (c *ModelsConfig) ListModels(provider string) ([]string, error) {
 		models = c.Groq
 	case "anthropic":
 		models = c.Anthropic
+	case "azure_openai":
+		models = c.AzureOpenAI
 	default:
 		return nil, fmt.Errorf("unknown provider: %s", provider)
 	}

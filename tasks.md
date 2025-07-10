@@ -112,12 +112,12 @@
 
 ## Phase 7: Other provider implementations
 
-### 7.1 Groq Provider
-- [ ] Research Groq API (OpenAI-compatible)
-- [ ] Create `providers/groq.go`
-- [ ] Implement streaming with custom HTTP client if needed
-- [ ] Add Groq-specific configuration (base URL, etc.)
-- [ ] Test token counting accuracy
+### 7.1 Groq Provider ✅
+- [x] Research Groq API (OpenAI-compatible)
+- [x] Create `providers/groq.go`
+- [x] Implement streaming with custom HTTP client if needed
+- [x] Add Groq-specific configuration (base URL, etc.)
+- [x] Test token counting accuracy
 
 ### 7.2 Anthropic Provider ✅
 - [x] Install Anthropic SDK at `https://github.com/anthropics/anthropic-sdk-go`
@@ -126,13 +126,13 @@
 - [x] Implement token counting
 - [x] Add Anthropic-specific retry logic
 
-### 7.3 Azure OpenAI Provider
-- [ ] Install the official Azure OpenAI SDK: `https://github.com/Azure/azure-sdk-for-go/`
-- [ ] Create `providers/azure_openai.go`
-- [ ] Implement streaming chat completions with Azure endpoints
-- [ ] Add Azure-specific configuration (endpoint, deployment name, API version)
-- [ ] Handle Azure-specific authentication and error handling
-- [ ] Test token counting accuracy with Azure models
+### 7.3 Azure OpenAI Provider ✅
+- [x] Use the OpenAI SDK for Azure `github.com/Azure/azure-sdk-for-go/sdk/ai/azopenai`, with relevant env variables: AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_API_VERSION, AZURE_OPENAI_API_KEY
+- [x] Create `providers/azure_openai.go`
+- [x] Implement streaming chat completions with Azure endpoints
+- [x] Add Azure-specific configuration (endpoint, deployment name, API version)
+- [x] Handle Azure-specific authentication and error handling
+- [x] Test token counting accuracy with Azure models
 
 ### 7.4 Google Gemini Provider
 - [ ] Install the official Google Gemini SDK: `https://github.com/googleapis/go-genai`

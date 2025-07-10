@@ -82,6 +82,7 @@ func main() {
 	factory.RegisterConfig("openai", cfg.GetOpenAIConfig())
 	factory.RegisterConfig("groq", cfg.GetGroqConfig())
 	factory.RegisterConfig("anthropic", cfg.GetAnthropicConfig())
+	factory.RegisterConfig("azure_openai", cfg.GetAzureOpenAIConfig())
 	
 	// Create provider instances for all configured providers
 	providerMap := make(map[string]providers.Provider)
@@ -129,6 +130,21 @@ func main() {
 		}
 	} else {
 		fmt.Printf("No Anthropic API key found\n")
+	}
+	
+	// Initialize Azure OpenAI provider if configuration is available
+	fmt.Printf("Checking Azure OpenAI configuration...\n")
+	if cfg.AzureOpenAIAPIKey != "" && cfg.AzureOpenAIEndpoint != "" {
+		fmt.Printf("Azure OpenAI configuration found, creating provider...\n")
+		provider, err := factory.GetProvider("azure_openai")
+		if err != nil {
+			log.Printf("Warning: Failed to create Azure OpenAI provider: %v", err)
+		} else {
+			providerMap["azure_openai"] = provider
+			fmt.Printf("Azure OpenAI provider created successfully\n")
+		}
+	} else {
+		fmt.Printf("No Azure OpenAI configuration found (requires AZURE_OPENAI_API_KEY and AZURE_OPENAI_ENDPOINT)\n")
 	}
 	
 	if len(providerMap) == 0 {
@@ -231,6 +247,9 @@ Configuration:
     OPENAI_API_KEY=sk-...
     GROQ_API_KEY=gsk_...
     ANTHROPIC_API_KEY=sk-ant-...
+    AZURE_OPENAI_API_KEY=your-azure-api-key
+    AZURE_OPENAI_ENDPOINT=https://your-resource.openai.azure.com/
+    # AZURE_OPENAI_API_VERSION=2024-02-15-preview
 
   The models.yaml file contains pricing information for different models.
 `, version)

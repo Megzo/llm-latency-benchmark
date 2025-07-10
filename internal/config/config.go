@@ -16,11 +16,14 @@ type Config struct {
 	OpenAIAPIKey    string
 	GroqAPIKey      string
 	AnthropicAPIKey string
+	AzureOpenAIAPIKey string
 
 	// Provider Base URLs
 	OpenAIBaseURL    string
 	GroqBaseURL      string
 	AnthropicBaseURL string
+	AzureOpenAIEndpoint string
+	AzureOpenAIAPIVersion string
 
 	// Models configuration
 	Models *ModelsConfig
@@ -48,10 +51,13 @@ func LoadConfig(modelsFile string) (*Config, error) {
 		OpenAIAPIKey:    os.Getenv("OPENAI_API_KEY"),
 		GroqAPIKey:      os.Getenv("GROQ_API_KEY"),
 		AnthropicAPIKey: os.Getenv("ANTHROPIC_API_KEY"),
+		AzureOpenAIAPIKey: os.Getenv("AZURE_OPENAI_API_KEY"),
 
 		OpenAIBaseURL:    getEnvOrDefault("OPENAI_BASE_URL", "https://api.openai.com/v1"),
 		GroqBaseURL:      getEnvOrDefault("GROQ_BASE_URL", "https://api.groq.com/openai/v1"),
 		AnthropicBaseURL: getEnvOrDefault("ANTHROPIC_BASE_URL", "https://api.anthropic.com"),
+		AzureOpenAIEndpoint: os.Getenv("AZURE_OPENAI_ENDPOINT"),
+		AzureOpenAIAPIVersion: getEnvOrDefault("AZURE_OPENAI_API_VERSION", "2024-02-15-preview"),
 
 		Concurrent: 1,
 		PromptsDir: "prompts",
@@ -122,6 +128,15 @@ func (c *Config) GetAnthropicConfig() *providers.AnthropicConfig {
 	return &providers.AnthropicConfig{
 		APIKey:  c.AnthropicAPIKey,
 		BaseURL: c.AnthropicBaseURL,
+	}
+}
+
+// GetAzureOpenAIConfig returns Azure OpenAI provider configuration
+func (c *Config) GetAzureOpenAIConfig() *providers.AzureOpenAIConfig {
+	return &providers.AzureOpenAIConfig{
+		Endpoint:       c.AzureOpenAIEndpoint,
+		APIKey:         c.AzureOpenAIAPIKey,
+		APIVersion:     c.AzureOpenAIAPIVersion,
 	}
 }
 
