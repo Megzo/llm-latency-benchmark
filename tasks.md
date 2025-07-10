@@ -41,28 +41,14 @@
 - [x] Add concurrent execution with worker pools
 - [x] Create context handling for cancellation
 
-## Phase 3: Provider Implementations
+## Phase 3: First Provider Implementations
 
-### 3.1 OpenAI Provider
-- [ ] Install OpenAI Go SDK: `go get github.com/sashabaranov/go-openai`
-- [ ] Create `providers/openai.go`
-- [ ] Implement streaming chat completions
-- [ ] Add token counting from response
-- [ ] Handle OpenAI-specific errors and retries
-
-### 3.2 Groq Provider
-- [ ] Research Groq API (likely OpenAI-compatible)
-- [ ] Create `providers/groq.go`
-- [ ] Implement streaming with custom HTTP client if needed
-- [ ] Add Groq-specific configuration (base URL, etc.)
-- [ ] Test token counting accuracy
-
-### 3.3 Anthropic Provider
-- [ ] Install Anthropic SDK or implement HTTP client
-- [ ] Create `providers/anthropic.go`
-- [ ] Handle Claude-specific streaming format
-- [ ] Implement token counting
-- [ ] Add Anthropic-specific retry logic
+### 3.1 OpenAI Provider ✅
+- [x] Install the official OpenAI Go SDK: `https://github.com/openai/openai-go`
+- [x] Create `providers/openai.go`
+- [x] Implement streaming chat completions
+- [x] Add token counting from response
+- [x] Handle OpenAI-specific errors and retries
 
 ## Phase 4: Metrics & Timing
 
@@ -124,15 +110,55 @@
 - [ ] Test with large prompt files
 - [ ] Benchmark the benchmarker itself
 
-## Phase 7: Polish & Documentation
+## Phase 7: Other provider implementations
 
-### 7.1 Error Messages & UX
+### 7.1 Groq Provider
+- [ ] Research Groq API (OpenAI-compatible)
+- [ ] Create `providers/groq.go`
+- [ ] Implement streaming with custom HTTP client if needed
+- [ ] Add Groq-specific configuration (base URL, etc.)
+- [ ] Test token counting accuracy
+
+### 7.2 Anthropic Provider
+- [ ] Install Anthropic SDK or implement HTTP client
+- [ ] Create `providers/anthropic.go`
+- [ ] Handle Claude-specific streaming format
+- [ ] Implement token counting
+- [ ] Add Anthropic-specific retry logic
+
+### 7.3 Azure OpenAI Provider
+- [ ] Install the official Azure OpenAI SDK: `https://github.com/Azure/azure-sdk-for-go/`
+- [ ] Create `providers/azure_openai.go`
+- [ ] Implement streaming chat completions with Azure endpoints
+- [ ] Add Azure-specific configuration (endpoint, deployment name, API version)
+- [ ] Handle Azure-specific authentication and error handling
+- [ ] Test token counting accuracy with Azure models
+
+### 7.4 Google Gemini Provider
+- [ ] Install the official Google Gemini SDK: `https://github.com/googleapis/go-genai`
+- [ ] Create `providers/gemini.go`
+- [ ] Implement streaming with Gemini's specific format
+- [ ] Handle Gemini-specific model names and parameters
+- [ ] Add Google Cloud authentication handling
+- [ ] Implement token counting for Gemini models
+
+### 7.5 Fireworks.ai Provider
+- [ ] Create `providers/fireworks.go`
+- [ ] Implement OpenAI-compatible API client (no additional SDK needed)
+- [ ] Add Fireworks.ai specific configuration (base URL, API key)
+- [ ] Handle Fireworks.ai model names and parameters
+- [ ] Implement streaming with OpenAI-compatible format
+- [ ] Test token counting accuracy
+
+## Phase 8: Polish & Documentation
+
+### 8.1 Error Messages & UX
 - [ ] Improve error messages for common issues
 - [ ] Add validation for configuration files
 - [ ] Create helpful CLI help text
 - [ ] Add progress bars for long runs
 
-### 7.2 Documentation
+### 8.2 Documentation
 - [ ] Create comprehensive README.md
 - [ ] Add usage examples
 - [ ] Document configuration options
@@ -143,6 +169,7 @@
 - [ ] Create release scripts
 - [ ] Add version information
 - [ ] Test cross-platform builds
+
 
 ## Implementation Notes
 

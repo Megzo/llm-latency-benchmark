@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/joho/godotenv"
+	"github.com/megzo/llm-latency-benchmark/providers"
 )
 
 // Config holds all application configuration
@@ -98,6 +99,14 @@ func (c *Config) GetOutputFile() string {
 	// Generate default filename with timestamp
 	timestamp := time.Now().Format("2006-01-02_15-04-05")
 	return filepath.Join("results", fmt.Sprintf("benchmark_%s.csv", timestamp))
+}
+
+// GetOpenAIConfig returns OpenAI provider configuration
+func (c *Config) GetOpenAIConfig() *providers.OpenAIConfig {
+	return &providers.OpenAIConfig{
+		APIKey:  c.OpenAIAPIKey,
+		BaseURL: c.OpenAIBaseURL,
+	}
 }
 
 // Helper function to get environment variable with default
