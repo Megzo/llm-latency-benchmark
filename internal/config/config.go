@@ -109,6 +109,14 @@ func (c *Config) GetOpenAIConfig() *providers.OpenAIConfig {
 	}
 }
 
+// GetGroqConfig returns Groq provider configuration
+func (c *Config) GetGroqConfig() *providers.GroqConfig {
+	return &providers.GroqConfig{
+		APIKey:  c.GroqAPIKey,
+		BaseURL: c.GroqBaseURL,
+	}
+}
+
 // Helper function to get environment variable with default
 func getEnvOrDefault(key, defaultValue string) string {
 	if value := os.Getenv(key); value != "" {

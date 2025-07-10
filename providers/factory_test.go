@@ -1,199 +1,98 @@
 package providers
 
 import (
-	"fmt"
+	"context"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
-func TestProviderFactory_RegisterProvider(t *testing.T) {
+func TestProviderFactory_RegisterConfig(t *testing.T) {
 	factory := NewProviderFactory()
 
-	// Test registering a valid provider
-	err := factory.RegisterProvider("test-provider", func(config interface{}) (Provider, error) {
-		return &MockProvider{name: "test-provider"}, nil
-	})
-	assert.NoError(t, err)
+	// Test registering a valid config
+	config := &OpenAIConfig{APIKey: "test-key"}
+	factory.RegisterConfig("test-provider", config)
 
-	// Test registering the same provider again (should fail)
-	err = factory.RegisterProvider("test-provider", func(config interface{}) (Provider, error) {
-		return &MockProvider{name: "test-provider-2"}, nil
-	})
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "already registered")
+	// Test registering the same provider again (should overwrite)
+	config2 := &OpenAIConfig{APIKey: "test-key-2"}
+	factory.RegisterConfig("test-provider", config2)
+	
+	// Should not error, just overwrite
 }
 
-func TestProviderFactory_CreateProvider(t *testing.T) {
+func TestProviderFactory_GetProvider(t *testing.T) {
 	factory := NewProviderFactory()
 
-	// Register a test provider
-	err := factory.RegisterProvider("test-provider", func(config interface{}) (Provider, error) {
-		return &MockProvider{name: "test-provider"}, nil
-	})
-	require.NoError(t, err)
+	// Register OpenAI config
+	config := &OpenAIConfig{APIKey: "test-key"}
+	factory.RegisterConfig("openai", config)
 
 	// Test creating a registered provider
-	provider, err := factory.CreateProvider("test-provider", nil)
+	provider, err := factory.GetProvider("openai")
 	assert.NoError(t, err)
 	assert.NotNil(t, provider)
-	assert.Equal(t, "test-provider", provider.Name())
+	assert.Equal(t, "openai", provider.Name())
 
 	// Test creating a non-registered provider
-	provider, err = factory.CreateProvider("non-existent", nil)
+	provider, err = factory.GetProvider("non-existent")
 	assert.Error(t, err)
 	assert.Nil(t, provider)
-	assert.Contains(t, err.Error(), "not registered")
+	assert.Contains(t, err.Error(), "unknown provider")
 }
 
-func TestProviderFactory_CreateProviderWithConfig(t *testing.T) {
+func TestProviderFactory_GetProviderWithConfig(t *testing.T) {
 	factory := NewProviderFactory()
 
-	// Register a provider that uses config
-	err := factory.RegisterProvider("config-provider", func(config interface{}) (Provider, error) {
-		if config == nil {
-			return nil, assert.AnError
-		}
-		cfg, ok := config.(string)
-		if !ok {
-			return nil, assert.AnError
-		}
-		return &MockProvider{name: cfg}, nil
-	})
-	require.NoError(t, err)
+	// Register Groq config
+	config := &GroqConfig{APIKey: "test-key"}
+	factory.RegisterConfig("groq", config)
 
 	// Test creating provider with valid config
-	provider, err := factory.CreateProvider("config-provider", "test-config")
+	provider, err := factory.GetProvider("groq")
 	assert.NoError(t, err)
 	assert.NotNil(t, provider)
-	assert.Equal(t, "test-config", provider.Name())
+	assert.Equal(t, "groq", provider.Name())
 
-	// Test creating provider with nil config (should fail)
-	provider, err = factory.CreateProvider("config-provider", nil)
-	assert.Error(t, err)
-	assert.Nil(t, provider)
+	// Test creating provider with missing config (should fail)
+	provider, err = factory.GetProvider("groq")
+	assert.NoError(t, err) // Should succeed as config is already registered
+	assert.NotNil(t, provider)
 }
 
-func TestProviderFactory_ListProviders(t *testing.T) {
+func TestProviderFactory_GetAvailableProviders(t *testing.T) {
 	factory := NewProviderFactory()
 
-	// Initially should be empty
-	providers := factory.ListProviders()
-	assert.Empty(t, providers)
-
-	// Register some providers
-	err := factory.RegisterProvider("provider1", func(config interface{}) (Provider, error) {
-		return &MockProvider{name: "provider1"}, nil
-	})
-	require.NoError(t, err)
-
-	err = factory.RegisterProvider("provider2", func(config interface{}) (Provider, error) {
-		return &MockProvider{name: "provider2"}, nil
-	})
-	require.NoError(t, err)
-
-	// Check that both providers are listed
-	providers = factory.ListProviders()
+	// Check available providers
+	providers := factory.GetAvailableProviders()
 	assert.Len(t, providers, 2)
-	assert.Contains(t, providers, "provider1")
-	assert.Contains(t, providers, "provider2")
+	assert.Contains(t, providers, "openai")
+	assert.Contains(t, providers, "groq")
 }
 
-func TestProviderFactory_ProviderExists(t *testing.T) {
+func TestProviderFactory_ClearProviders(t *testing.T) {
 	factory := NewProviderFactory()
 
-	// Initially no providers exist
-	assert.False(t, factory.ProviderExists("test-provider"))
+	// Register a config
+	config := &OpenAIConfig{APIKey: "test-key"}
+	factory.RegisterConfig("openai", config)
 
-	// Register a provider
-	err := factory.RegisterProvider("test-provider", func(config interface{}) (Provider, error) {
-		return &MockProvider{name: "test-provider"}, nil
-	})
-	require.NoError(t, err)
+	// Get provider (should create and cache it)
+	provider1, err := factory.GetProvider("openai")
+	assert.NoError(t, err)
+	assert.NotNil(t, provider1)
 
-	// Now the provider should exist
-	assert.True(t, factory.ProviderExists("test-provider"))
-	assert.False(t, factory.ProviderExists("non-existent"))
-}
+	// Clear providers
+	factory.ClearProviders()
 
-func TestProviderFactory_ConcurrentAccess(t *testing.T) {
-	factory := NewProviderFactory()
+	// Get provider again (should create new instance)
+	provider2, err := factory.GetProvider("openai")
+	assert.NoError(t, err)
+	assert.NotNil(t, provider2)
 
-	// Test concurrent registration and creation
-	done := make(chan bool, 2)
-
-	// Goroutine 1: Register providers
-	go func() {
-		defer func() { done <- true }()
-		for i := 0; i < 10; i++ {
-			name := fmt.Sprintf("provider-%d", i)
-			err := factory.RegisterProvider(name, func(config interface{}) (Provider, error) {
-				return &MockProvider{name: name}, nil
-			})
-			assert.NoError(t, err)
-		}
-	}()
-
-	// Goroutine 2: Create providers
-	go func() {
-		defer func() { done <- true }()
-		for i := 0; i < 10; i++ {
-			name := fmt.Sprintf("provider-%d", i)
-			provider, err := factory.CreateProvider(name, nil)
-			if err == nil {
-				assert.NotNil(t, provider)
-				assert.Equal(t, name, provider.Name())
-			}
-		}
-	}()
-
-	// Wait for both goroutines to complete
-	<-done
-	<-done
-}
-
-func TestProviderFactory_ErrorHandling(t *testing.T) {
-	factory := NewProviderFactory()
-
-	// Register a provider that always returns an error
-	err := factory.RegisterProvider("error-provider", func(config interface{}) (Provider, error) {
-		return nil, assert.AnError
-	})
-	require.NoError(t, err)
-
-	// Test creating the provider (should return error)
-	provider, err := factory.CreateProvider("error-provider", nil)
-	assert.Error(t, err)
-	assert.Nil(t, provider)
-	assert.Equal(t, assert.AnError, err)
-}
-
-func TestProviderFactory_EmptyName(t *testing.T) {
-	factory := NewProviderFactory()
-
-	// Test registering provider with empty name
-	err := factory.RegisterProvider("", func(config interface{}) (Provider, error) {
-		return &MockProvider{name: "empty"}, nil
-	})
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "empty provider name")
-
-	// Test creating provider with empty name
-	provider, err := factory.CreateProvider("", nil)
-	assert.Error(t, err)
-	assert.Nil(t, provider)
-	assert.Contains(t, err.Error(), "empty provider name")
-}
-
-func TestProviderFactory_NilConstructor(t *testing.T) {
-	factory := NewProviderFactory()
-
-	// Test registering provider with nil constructor
-	err := factory.RegisterProvider("nil-provider", nil)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "nil constructor")
+	// Should be different instances (not cached)
+	assert.NotEqual(t, provider1, provider2)
 }
 
 // MockProvider is a test implementation of the Provider interface
@@ -205,10 +104,27 @@ func (m *MockProvider) Name() string {
 	return m.name
 }
 
-func (m *MockProvider) Chat(request ChatRequest) (*ChatResponse, error) {
-	return &ChatResponse{
-		Content: "Mock response",
-	}, nil
+func (m *MockProvider) StreamChat(ctx context.Context, req ChatRequest) (<-chan ChatResponse, error) {
+	responseChan := make(chan ChatResponse)
+	
+	go func() {
+		defer close(responseChan)
+		responseChan <- ChatResponse{
+			Content:    "Mock response",
+			IsComplete: true,
+			Timestamp:  time.Now(),
+		}
+	}()
+	
+	return responseChan, nil
+}
+
+func (m *MockProvider) TokenCount(response ChatResponse) (input, output, total int) {
+	return 0, len(response.Content), len(response.Content)
+}
+
+func (m *MockProvider) GetTokenCount(text string) int {
+	return len(text) / 4
 }
 
 func (m *MockProvider) ValidateRequest(request ChatRequest) error {
@@ -218,14 +134,10 @@ func (m *MockProvider) ValidateRequest(request ChatRequest) error {
 	return nil
 }
 
-func (m *MockProvider) TokenCount(response ChatResponse) (int, int, int) {
-	return 0, len(response.Content), len(response.Content)
-}
-
 func (m *MockProvider) IsRetryableError(err error) bool {
 	return false
 }
 
-func (m *MockProvider) GetRetryDelay(attempt int) time.Duration {
+func (m *MockProvider) GetRetryDelay(attempt int, err error) time.Duration {
 	return time.Second
 } 

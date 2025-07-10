@@ -77,9 +77,10 @@ func main() {
 	fmt.Printf("Initializing provider factory...\n")
 	factory := providers.NewProviderFactory()
 	
-	// Register OpenAI provider configuration
-	fmt.Printf("Registering OpenAI provider...\n")
+	// Register provider configurations
+	fmt.Printf("Registering provider configurations...\n")
 	factory.RegisterConfig("openai", cfg.GetOpenAIConfig())
+	factory.RegisterConfig("groq", cfg.GetGroqConfig())
 	
 	// Create provider instances for all configured providers
 	providerMap := make(map[string]providers.Provider)
@@ -99,7 +100,20 @@ func main() {
 		fmt.Printf("No OpenAI API key found\n")
 	}
 	
-	// TODO: Add other providers when implemented
+	// Initialize Groq provider if API key is available
+	fmt.Printf("Checking Groq API key...\n")
+	if cfg.GroqAPIKey != "" {
+		fmt.Printf("Groq API key found, creating provider...\n")
+		provider, err := factory.GetProvider("groq")
+		if err != nil {
+			log.Printf("Warning: Failed to create Groq provider: %v", err)
+		} else {
+			providerMap["groq"] = provider
+			fmt.Printf("Groq provider created successfully\n")
+		}
+	} else {
+		fmt.Printf("No Groq API key found\n")
+	}
 	
 	if len(providerMap) == 0 {
 		log.Fatal("No valid providers could be initialized")
