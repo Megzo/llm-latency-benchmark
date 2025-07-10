@@ -9,7 +9,10 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/megzo/llm-latency-benchmark/internal/benchmark"
 	"github.com/megzo/llm-latency-benchmark/internal/config"
+	"github.com/megzo/llm-latency-benchmark/internal/output"
+	"github.com/megzo/llm-latency-benchmark/providers"
 )
 
 const version = "0.1.0"
@@ -39,10 +42,12 @@ func main() {
 	}
 
 	// Load configuration
+	fmt.Printf("Loading configuration from %s...\n", *modelsFile)
 	cfg, err := config.LoadConfig(*modelsFile)
 	if err != nil {
 		log.Fatalf("Failed to load configuration: %v", err)
 	}
+	fmt.Printf("Configuration loaded successfully\n")
 
 	// Override config with CLI flags
 	cfg.Concurrent = *concurrent
@@ -56,7 +61,7 @@ func main() {
 	}
 
 	// Set up graceful shutdown
-	_, cancel := context.WithCancel(context.Background())
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	// Handle interrupt signals
@@ -68,7 +73,43 @@ func main() {
 		cancel()
 	}()
 
-	// TODO: Initialize and run benchmark
+	// Initialize provider factory
+	fmt.Printf("Initializing provider factory...\n")
+	factory := providers.NewProviderFactory()
+	
+	// Register OpenAI provider configuration
+	fmt.Printf("Registering OpenAI provider...\n")
+	factory.RegisterConfig("openai", cfg.GetOpenAIConfig())
+	
+	// Create provider instances for all configured providers
+	providerMap := make(map[string]providers.Provider)
+	
+	// Initialize OpenAI provider if API key is available
+	fmt.Printf("Checking OpenAI API key...\n")
+	if cfg.OpenAIAPIKey != "" {
+		fmt.Printf("OpenAI API key found, creating provider...\n")
+		provider, err := factory.GetProvider("openai")
+		if err != nil {
+			log.Printf("Warning: Failed to create OpenAI provider: %v", err)
+		} else {
+			providerMap["openai"] = provider
+			fmt.Printf("OpenAI provider created successfully\n")
+		}
+	} else {
+		fmt.Printf("No OpenAI API key found\n")
+	}
+	
+	// TODO: Add other providers when implemented
+	
+	if len(providerMap) == 0 {
+		log.Fatal("No valid providers could be initialized")
+	}
+	
+	fmt.Printf("Providers initialized: %d\n", len(providerMap))
+	
+	// Create and run benchmark
+	runner := benchmark.NewRunner(cfg, providerMap, cfg.Verbose)
+	
 	fmt.Printf("LLM Benchmark Tool v%s\n", version)
 	fmt.Printf("Configuration loaded successfully\n")
 	fmt.Printf("Concurrent requests: %d\n", cfg.Concurrent)
@@ -76,9 +117,39 @@ func main() {
 	fmt.Printf("Models file: %s\n", *modelsFile)
 	fmt.Printf("Output file: %s\n", cfg.GetOutputFile())
 	fmt.Printf("Verbose mode: %t\n", cfg.Verbose)
-
-	// Placeholder for benchmark execution
-	fmt.Println("Benchmark execution not yet implemented")
+	fmt.Printf("Providers initialized: %d\n", len(providerMap))
+	
+	// Run the benchmark
+	if err := runner.Run(ctx); err != nil {
+		log.Fatalf("Benchmark failed: %v", err)
+	}
+	
+	// Get results and write to CSV
+	results := runner.GetResults()
+	if len(results) == 0 {
+		log.Println("No benchmark results generated")
+		return
+	}
+	
+	// Write results to CSV
+	csvWriter := output.NewCSVWriter(cfg.GetOutputFile())
+	if err := csvWriter.WriteResults(results); err != nil {
+		log.Fatalf("Failed to write CSV results: %v", err)
+	}
+	
+	// Print summary
+	summary := runner.GetSummary()
+	fmt.Printf("\nBenchmark completed successfully!\n")
+	fmt.Printf("Results written to: %s\n", cfg.GetOutputFile())
+	fmt.Printf("Total runs: %d\n", summary.TotalRuns)
+	fmt.Printf("Successful runs: %d\n", summary.SuccessfulRuns)
+	fmt.Printf("Failed runs: %d\n", summary.FailedRuns)
+	fmt.Printf("Error rate: %.2f%%\n", summary.ErrorRate*100)
+	if summary.SuccessfulRuns > 0 {
+		fmt.Printf("Average TTFT: %v\n", summary.AvgTTFT)
+		fmt.Printf("Average total time: %v\n", summary.AvgTotalTime)
+		fmt.Printf("Total cost: $%.6f\n", summary.TotalCost)
+	}
 }
 
 func printHelp() {

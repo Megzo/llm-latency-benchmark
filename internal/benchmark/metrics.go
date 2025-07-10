@@ -3,8 +3,6 @@ package benchmark
 import (
 	"sync"
 	"time"
-
-	"github.com/megzo/llm-latency-benchmark/providers"
 )
 
 // Metrics holds timing and performance metrics for a benchmark run
@@ -110,12 +108,42 @@ func (m *Metrics) SetCost(cost float64) {
 	m.Cost = cost
 }
 
+// BenchmarkResult holds the complete result of a benchmark run
+type BenchmarkResult struct {
+	Provider        string    `json:"provider"`
+	Model           string    `json:"model"`
+	PromptFile      string    `json:"prompt_file"`
+	
+	// Timing metrics
+	StartTime       time.Time `json:"start_time"`
+	FirstTokenTime  time.Time `json:"first_token_time"`
+	EndTime         time.Time `json:"end_time"`
+	TTFT            time.Duration `json:"ttft"`           // Time to first token
+	TotalTime       time.Duration `json:"total_time"`     // Total response time
+	
+	// Token metrics
+	InputTokens     int       `json:"input_tokens"`
+	OutputTokens    int       `json:"output_tokens"`
+	TotalTokens     int       `json:"total_tokens"`
+	TokensPerSecond float64   `json:"tokens_per_second"`
+	
+	// Cost metrics
+	Cost            float64   `json:"cost"`
+	
+	// Response content
+	Response        string    `json:"response"`
+	
+	// Error information
+	Error           error     `json:"error,omitempty"`
+	Success         bool      `json:"success"`
+}
+
 // ToBenchmarkResult converts metrics to a BenchmarkResult
-func (m *Metrics) ToBenchmarkResult(provider, model, promptFile string) providers.BenchmarkResult {
+func (m *Metrics) ToBenchmarkResult(provider, model, promptFile string) BenchmarkResult {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 	
-	return providers.BenchmarkResult{
+	return BenchmarkResult{
 		Provider:        provider,
 		Model:           model,
 		PromptFile:      promptFile,
@@ -163,7 +191,7 @@ type Summary struct {
 }
 
 // CalculateSummary calculates summary statistics from a slice of results
-func CalculateSummary(results []providers.BenchmarkResult) Summary {
+func CalculateSummary(results []BenchmarkResult) Summary {
 	if len(results) == 0 {
 		return Summary{}
 	}

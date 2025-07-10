@@ -16,6 +16,9 @@ type Provider interface {
 	
 	// TokenCount returns the token counts for a response
 	TokenCount(response ChatResponse) (input, output, total int)
+	
+	// GetTokenCount estimates token count for input text
+	GetTokenCount(text string) int
 }
 
 // ChatRequest represents a chat completion request

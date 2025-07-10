@@ -50,45 +50,45 @@
 - [x] Add token counting from response
 - [x] Handle OpenAI-specific errors and retries
 
-## Phase 4: Metrics & Timing
+## Phase 4: Metrics & Timing ✅
 
-### 4.1 Precise Timing
-- [ ] Implement high-resolution timing in `internal/benchmark/metrics.go`
-- [ ] Add TTFT measurement with streaming
-- [ ] Calculate tokens per second from streaming data
-- [ ] Add total response time tracking
+### 4.1 Precise Timing ✅
+- [x] Implement high-resolution timing in `internal/benchmark/metrics.go`
+- [x] Add TTFT measurement with streaming
+- [x] Calculate tokens per second from streaming data
+- [x] Add total response time tracking
 
-### 4.2 Cost Calculation
-- [ ] Implement pricing calculation based on models.yaml
-- [ ] Add cost per request and total cost tracking
-- [ ] Handle different pricing models (input/output tokens)
-- [ ] Add cost reporting in results
+### 4.2 Cost Calculation ✅
+- [x] Implement pricing calculation based on models.yaml
+- [x] Add cost per request and total cost tracking
+- [x] Handle different pricing models (input/output tokens)
+- [x] Add cost reporting in results
 
-### 4.3 Error Handling & Retries
-- [ ] Implement exponential backoff retry logic
-- [ ] Add timeout handling for requests
-- [ ] Create detailed error logging
-- [ ] Add failure rate tracking
+### 4.3 Error Handling & Retries ✅
+- [x] Implement exponential backoff retry logic
+- [x] Add timeout handling for requests
+- [x] Create detailed error logging
+- [x] Add failure rate tracking
 
-## Phase 5: Output & Logging
+## Phase 5: Output & Logging ✅
 
-### 5.1 CSV Output
-- [ ] Create `internal/output/csv.go`
-- [ ] Define CSV schema with all metrics
-- [ ] Implement file writing with proper headers
-- [ ] Add timestamp and metadata to filename
+### 5.1 CSV Output ✅
+- [x] Create `internal/output/csv.go`
+- [x] Define CSV schema with all metrics
+- [x] Implement file writing with proper headers
+- [x] Add timestamp and metadata to filename
 
-### 5.2 Console Logging
-- [ ] Create `internal/output/logger.go`
-- [ ] Implement verbose logging with progress indicators
-- [ ] Add colored output for better UX
-- [ ] Create real-time statistics display
+### 5.2 Console Logging ✅
+- [x] Create `internal/output/logger.go`
+- [x] Implement verbose logging with progress indicators
+- [x] Add colored output for better UX
+- [x] Create real-time statistics display
 
-### 5.3 Results Summary
-- [ ] Add summary statistics (avg, median, p95, p99)
-- [ ] Create comparison between models
-- [ ] Add cost analysis summary
-- [ ] Implement error rate reporting
+### 5.3 Results Summary ✅
+- [x] Add summary statistics (avg, median, p95, p99)
+- [x] Create comparison between models
+- [x] Add cost analysis summary
+- [x] Implement error rate reporting
 
 ## Phase 6: Testing & Validation
 
