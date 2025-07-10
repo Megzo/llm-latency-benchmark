@@ -66,9 +66,10 @@ func TestProviderFactory_GetAvailableProviders(t *testing.T) {
 
 	// Check available providers
 	providers := factory.GetAvailableProviders()
-	assert.Len(t, providers, 2)
+	assert.Len(t, providers, 3)
 	assert.Contains(t, providers, "openai")
 	assert.Contains(t, providers, "groq")
+	assert.Contains(t, providers, "anthropic")
 }
 
 func TestProviderFactory_ClearProviders(t *testing.T) {

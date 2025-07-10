@@ -78,11 +78,14 @@ func (f *ProviderFactory) createProvider(providerName string) (Provider, error) 
 		return NewGroqProvider(config)
 
 	case "anthropic":
-		// TODO: Implement when Anthropic provider is added
-		return nil, &ConfigurationError{
-			Field:   "anthropic_provider",
-			Message: "Anthropic provider not yet implemented",
+		config, ok := f.configs[providerName].(*AnthropicConfig)
+		if !ok {
+			return nil, &ConfigurationError{
+				Field:   "anthropic_config",
+				Message: "Anthropic configuration not found or invalid",
+			}
 		}
+		return NewAnthropicProvider(config)
 
 	default:
 		return nil, &ConfigurationError{
@@ -104,6 +107,6 @@ func (f *ProviderFactory) GetAvailableProviders() []string {
 	return []string{
 		"openai",
 		"groq",
-		// "anthropic", // TODO: Add when implemented
+		"anthropic",
 	}
 } 

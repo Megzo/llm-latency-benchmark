@@ -81,6 +81,7 @@ func main() {
 	fmt.Printf("Registering provider configurations...\n")
 	factory.RegisterConfig("openai", cfg.GetOpenAIConfig())
 	factory.RegisterConfig("groq", cfg.GetGroqConfig())
+	factory.RegisterConfig("anthropic", cfg.GetAnthropicConfig())
 	
 	// Create provider instances for all configured providers
 	providerMap := make(map[string]providers.Provider)
@@ -113,6 +114,21 @@ func main() {
 		}
 	} else {
 		fmt.Printf("No Groq API key found\n")
+	}
+	
+	// Initialize Anthropic provider if API key is available
+	fmt.Printf("Checking Anthropic API key...\n")
+	if cfg.AnthropicAPIKey != "" {
+		fmt.Printf("Anthropic API key found, creating provider...\n")
+		provider, err := factory.GetProvider("anthropic")
+		if err != nil {
+			log.Printf("Warning: Failed to create Anthropic provider: %v", err)
+		} else {
+			providerMap["anthropic"] = provider
+			fmt.Printf("Anthropic provider created successfully\n")
+		}
+	} else {
+		fmt.Printf("No Anthropic API key found\n")
 	}
 	
 	if len(providerMap) == 0 {

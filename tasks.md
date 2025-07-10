@@ -119,12 +119,12 @@
 - [ ] Add Groq-specific configuration (base URL, etc.)
 - [ ] Test token counting accuracy
 
-### 7.2 Anthropic Provider
-- [ ] Install Anthropic SDK or implement HTTP client
-- [ ] Create `providers/anthropic.go`
-- [ ] Handle Claude-specific streaming format
-- [ ] Implement token counting
-- [ ] Add Anthropic-specific retry logic
+### 7.2 Anthropic Provider ✅
+- [x] Install Anthropic SDK at `https://github.com/anthropics/anthropic-sdk-go`
+- [x] Create `providers/anthropic.go`
+- [x] Handle Claude-specific streaming format
+- [x] Implement token counting
+- [x] Add Anthropic-specific retry logic
 
 ### 7.3 Azure OpenAI Provider
 - [ ] Install the official Azure OpenAI SDK: `https://github.com/Azure/azure-sdk-for-go/`

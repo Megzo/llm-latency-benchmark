@@ -117,6 +117,14 @@ func (c *Config) GetGroqConfig() *providers.GroqConfig {
 	}
 }
 
+// GetAnthropicConfig returns Anthropic provider configuration
+func (c *Config) GetAnthropicConfig() *providers.AnthropicConfig {
+	return &providers.AnthropicConfig{
+		APIKey:  c.AnthropicAPIKey,
+		BaseURL: c.AnthropicBaseURL,
+	}
+}
+
 // Helper function to get environment variable with default
 func getEnvOrDefault(key, defaultValue string) string {
 	if value := os.Getenv(key); value != "" {
