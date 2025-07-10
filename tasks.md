@@ -27,7 +27,7 @@
 - [x] Create `providers/provider.go` with Provider interface
 - [x] Define ChatRequest and ChatResponse structs
 - [x] Add metrics collection structs in `internal/benchmark/metrics.go`
-- [ ] Create error types for different failure modes
+- [x] Create error types for different failure modes
 
 ### 2.2 Prompt Loading
 - [x] Create prompt loader in `internal/config/prompts.go`
@@ -36,10 +36,10 @@
 - [x] Add sample prompt files in prompts/ directory
 
 ### 2.3 Benchmark Runner Core
-- [ ] Create `internal/benchmark/runner.go`
-- [ ] Implement sequential execution logic
-- [ ] Add concurrent execution with worker pools
-- [ ] Create context handling for cancellation
+- [x] Create `internal/benchmark/runner.go`
+- [x] Implement sequential execution logic
+- [x] Add concurrent execution with worker pools
+- [x] Create context handling for cancellation
 
 ## Phase 3: Provider Implementations
 

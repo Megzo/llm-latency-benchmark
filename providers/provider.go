@@ -2,6 +2,7 @@ package providers
 
 import (
 	"context"
+	"fmt"
 	"time"
 )
 
@@ -80,4 +81,58 @@ func (r *BenchmarkResult) CalculateMetrics() {
 	if r.TotalTime > 0 && r.OutputTokens > 0 {
 		r.TokensPerSecond = float64(r.OutputTokens) / r.TotalTime.Seconds()
 	}
+}
+
+// Error types for different failure modes
+type ProviderError struct {
+	Provider string
+	Message  string
+	Cause    error
+}
+
+func (e *ProviderError) Error() string {
+	if e.Cause != nil {
+		return fmt.Sprintf("provider %s error: %s (caused by: %v)", e.Provider, e.Message, e.Cause)
+	}
+	return fmt.Sprintf("provider %s error: %s", e.Provider, e.Message)
+}
+
+func (e *ProviderError) Unwrap() error {
+	return e.Cause
+}
+
+type ConfigurationError struct {
+	Field   string
+	Message string
+}
+
+func (e *ConfigurationError) Error() string {
+	return fmt.Sprintf("configuration error in %s: %s", e.Field, e.Message)
+}
+
+type ValidationError struct {
+	Field   string
+	Message string
+}
+
+func (e *ValidationError) Error() string {
+	return fmt.Sprintf("validation error in %s: %s", e.Field, e.Message)
+}
+
+type TimeoutError struct {
+	Operation string
+	Duration  time.Duration
+}
+
+func (e *TimeoutError) Error() string {
+	return fmt.Sprintf("timeout error in %s after %v", e.Operation, e.Duration)
+}
+
+type RateLimitError struct {
+	Provider string
+	RetryAfter time.Duration
+}
+
+func (e *RateLimitError) Error() string {
+	return fmt.Sprintf("rate limit exceeded for provider %s, retry after %v", e.Provider, e.RetryAfter)
 } 

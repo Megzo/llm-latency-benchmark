@@ -31,8 +31,9 @@ type Config struct {
 	Verbose    bool
 
 	// Benchmark settings
-	Timeout time.Duration
-	Retries int
+	Timeout        time.Duration
+	RequestTimeout time.Duration
+	Retries        int
 }
 
 // LoadConfig loads configuration from environment variables and files
@@ -56,8 +57,9 @@ func LoadConfig(modelsFile string) (*Config, error) {
 		OutputFile: "",
 		Verbose:    false,
 
-		Timeout: 30 * time.Second,
-		Retries: 3,
+		Timeout:        30 * time.Second,
+		RequestTimeout: 60 * time.Second,
+		Retries:        3,
 	}
 
 	// Load models configuration
