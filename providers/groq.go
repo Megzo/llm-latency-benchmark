@@ -1,7 +1,13 @@
 package providers
 
 import (
+	"bufio"
+	"bytes"
 	"context"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
 	"strings"
 	"time"
 
@@ -19,6 +25,39 @@ type GroqProvider struct {
 type GroqConfig struct {
 	APIKey  string
 	BaseURL string
+}
+
+// GroqChatRequest represents the Groq-specific chat completion request
+type GroqChatRequest struct {
+	Model               string    `json:"model"`
+	Messages            []Message `json:"messages"`
+	Temperature         *float64  `json:"temperature,omitempty"`
+	MaxCompletionTokens *int      `json:"max_completion_tokens,omitempty"`
+	TopP                *float64  `json:"top_p,omitempty"`
+	Stream              bool      `json:"stream"`
+	ReasoningEffort     *string   `json:"reasoning_effort,omitempty"`
+	Stop                []string  `json:"stop,omitempty"`
+}
+
+// Message represents a chat message
+type Message struct {
+	Role    string `json:"role"`
+	Content string `json:"content"`
+}
+
+// GroqChatResponse represents the Groq streaming response
+type GroqChatResponse struct {
+	ID      string `json:"id"`
+	Object  string `json:"object"`
+	Created int64  `json:"created"`
+	Model   string `json:"model"`
+	Choices []struct {
+		Index   int `json:"index"`
+		Delta   struct {
+			Content string `json:"content"`
+		} `json:"delta"`
+		FinishReason *string `json:"finish_reason"`
+	} `json:"choices"`
 }
 
 // NewGroqProvider creates a new Groq provider instance
@@ -55,6 +94,188 @@ func (p *GroqProvider) Name() string {
 func (p *GroqProvider) StreamChat(ctx context.Context, req ChatRequest) (<-chan ChatResponse, error) {
 	responseChan := make(chan ChatResponse)
 
+	// Check if we need to use Groq-specific parameters
+	useDirectAPI := false
+	var reasoningEffort *string
+	if req.ExtraParams != nil {
+		if effort, ok := req.ExtraParams["reasoning_effort"].(string); ok {
+			reasoningEffort = &effort
+			useDirectAPI = true
+		}
+	}
+
+	if useDirectAPI {
+		// Use direct HTTP API for Groq-specific parameters
+		go p.streamChatDirect(ctx, req, reasoningEffort, responseChan)
+	} else {
+		// Use OpenAI library for standard parameters
+		go p.streamChatOpenAI(ctx, req, responseChan)
+	}
+
+	return responseChan, nil
+}
+
+// streamChatDirect performs streaming chat using direct HTTP API
+func (p *GroqProvider) streamChatDirect(ctx context.Context, req ChatRequest, reasoningEffort *string, responseChan chan<- ChatResponse) {
+	defer close(responseChan)
+
+	// Build messages
+	messages := []Message{}
+	if req.SystemPrompt != "" {
+		messages = append(messages, Message{Role: "system", Content: req.SystemPrompt})
+	}
+	messages = append(messages, Message{Role: "user", Content: req.UserPrompt})
+
+	// Build Groq-specific request
+	groqReq := GroqChatRequest{
+		Model:   req.Model,
+		Messages: messages,
+		Stream:  true,
+	}
+
+	if req.MaxTokens > 0 {
+		groqReq.MaxCompletionTokens = &req.MaxTokens
+	}
+	if req.Temperature > 0 {
+		groqReq.Temperature = &req.Temperature
+	}
+	if req.TopP > 0 {
+		groqReq.TopP = &req.TopP
+	}
+	if reasoningEffort != nil {
+		groqReq.ReasoningEffort = reasoningEffort
+	}
+
+	// Marshal request
+	reqBody, err := json.Marshal(groqReq)
+	if err != nil {
+		responseChan <- ChatResponse{
+			Content:    "",
+			IsComplete: true,
+			Timestamp:  time.Now(),
+			Error: &ProviderError{
+				Provider: "groq",
+				Message:  "failed to marshal request",
+				Cause:    err,
+			},
+		}
+		return
+	}
+
+	// Create HTTP request
+	httpReq, err := http.NewRequestWithContext(ctx, "POST", p.config.BaseURL+"/chat/completions", bytes.NewBuffer(reqBody))
+	if err != nil {
+		responseChan <- ChatResponse{
+			Content:    "",
+			IsComplete: true,
+			Timestamp:  time.Now(),
+			Error: &ProviderError{
+				Provider: "groq",
+				Message:  "failed to create HTTP request",
+				Cause:    err,
+			},
+		}
+		return
+	}
+
+	httpReq.Header.Set("Content-Type", "application/json")
+	httpReq.Header.Set("Authorization", "Bearer "+p.config.APIKey)
+
+	// Make request
+	client := &http.Client{}
+	resp, err := client.Do(httpReq)
+	if err != nil {
+		responseChan <- ChatResponse{
+			Content:    "",
+			IsComplete: true,
+			Timestamp:  time.Now(),
+			Error: &ProviderError{
+				Provider: "groq",
+				Message:  "failed to make HTTP request",
+				Cause:    err,
+			},
+		}
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		responseChan <- ChatResponse{
+			Content:    "",
+			IsComplete: true,
+			Timestamp:  time.Now(),
+			Error: &ProviderError{
+				Provider: "groq",
+				Message:  fmt.Sprintf("HTTP error %d: %s", resp.StatusCode, string(body)),
+			},
+		}
+		return
+	}
+
+	// Read streaming response
+	reader := bufio.NewReader(resp.Body)
+	for {
+		line, err := reader.ReadString('\n')
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			responseChan <- ChatResponse{
+				Content:    "",
+				IsComplete: true,
+				Timestamp:  time.Now(),
+				Error: &ProviderError{
+					Provider: "groq",
+					Message:  "failed to read response stream",
+					Cause:    err,
+				},
+			}
+			return
+		}
+
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+
+		// Handle SSE format: "data: {...}"
+		if strings.HasPrefix(line, "data: ") {
+			data := strings.TrimPrefix(line, "data: ")
+			if data == "[DONE]" {
+				break
+			}
+
+			var groqResp GroqChatResponse
+			if err := json.Unmarshal([]byte(data), &groqResp); err != nil {
+				continue // Skip malformed JSON
+			}
+
+			if len(groqResp.Choices) > 0 {
+				choice := groqResp.Choices[0]
+				if choice.Delta.Content != "" {
+					responseChan <- ChatResponse{
+						Content:    choice.Delta.Content,
+						IsComplete: false,
+						Timestamp:  time.Now(),
+					}
+				}
+			}
+		}
+	}
+
+	// Stream completed successfully
+	responseChan <- ChatResponse{
+		Content:    "",
+		IsComplete: true,
+		Timestamp:  time.Now(),
+	}
+}
+
+// streamChatOpenAI performs streaming chat using OpenAI library
+func (p *GroqProvider) streamChatOpenAI(ctx context.Context, req ChatRequest, responseChan chan<- ChatResponse) {
+	defer close(responseChan)
+
 	// Build messages for Groq API (OpenAI-compatible)
 	messages := []openai.ChatCompletionMessageParamUnion{}
 	if req.SystemPrompt != "" {
@@ -76,49 +297,44 @@ func (p *GroqProvider) StreamChat(ctx context.Context, req ChatRequest) (<-chan 
 		chatReq.TopP = openai.Float(req.TopP)
 	}
 
-	go func() {
-		defer close(responseChan)
-		
-		// Create streaming completion
-		stream := p.client.Chat.Completions.NewStreaming(ctx, chatReq)
-		
-		for stream.Next() {
-			resp := stream.Current()
-			if len(resp.Choices) > 0 {
-				choice := resp.Choices[0]
-				if choice.Delta.Content != "" {
-					responseChan <- ChatResponse{
-						Content:    choice.Delta.Content,
-						IsComplete: false,
-						Timestamp:  time.Now(),
-					}
+	// Create streaming completion
+	stream := p.client.Chat.Completions.NewStreaming(ctx, chatReq)
+	
+	for stream.Next() {
+		resp := stream.Current()
+		if len(resp.Choices) > 0 {
+			choice := resp.Choices[0]
+			if choice.Delta.Content != "" {
+				responseChan <- ChatResponse{
+					Content:    choice.Delta.Content,
+					IsComplete: false,
+					Timestamp:  time.Now(),
 				}
 			}
 		}
-		
-		// Check for errors
-		if err := stream.Err(); err != nil {
-			responseChan <- ChatResponse{
-				Content:    "",
-				IsComplete: true,
-				Timestamp:  time.Now(),
-				Error: &ProviderError{
-					Provider: "groq",
-					Message:  "failed to receive stream response",
-					Cause:    err,
-				},
-			}
-			return
-		}
-		
-		// Stream completed successfully
+	}
+	
+	// Check for errors
+	if err := stream.Err(); err != nil {
 		responseChan <- ChatResponse{
 			Content:    "",
 			IsComplete: true,
 			Timestamp:  time.Now(),
+			Error: &ProviderError{
+				Provider: "groq",
+				Message:  "failed to receive stream response",
+				Cause:    err,
+			},
 		}
-	}()
-	return responseChan, nil
+		return
+	}
+	
+	// Stream completed successfully
+	responseChan <- ChatResponse{
+		Content:    "",
+		IsComplete: true,
+		Timestamp:  time.Now(),
+	}
 }
 
 // TokenCount returns the token counts for a response

@@ -23,12 +23,13 @@ type Provider interface {
 
 // ChatRequest represents a chat completion request
 type ChatRequest struct {
-	Model       string    `json:"model"`
-	SystemPrompt string   `json:"system_prompt,omitempty"`
-	UserPrompt  string    `json:"user_prompt"`
-	MaxTokens   int       `json:"max_tokens,omitempty"`
-	Temperature float64   `json:"temperature,omitempty"`
-	TopP        float64   `json:"top_p,omitempty"`
+	Model       string                 `json:"model"`
+	SystemPrompt string                `json:"system_prompt,omitempty"`
+	UserPrompt  string                 `json:"user_prompt"`
+	MaxTokens   int                    `json:"max_tokens,omitempty"`
+	Temperature float64                `json:"temperature,omitempty"`
+	TopP        float64                `json:"top_p,omitempty"`
+	ExtraParams map[string]interface{} `json:"extra_params,omitempty"`
 }
 
 // ChatResponse represents a streaming chat response

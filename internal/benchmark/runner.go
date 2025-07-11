@@ -202,6 +202,17 @@ func (r *Runner) runSingleBenchmark(ctx context.Context, provider providers.Prov
 		TopP:         1.0,  // Default top_p
 	}
 
+	// Add Groq-specific parameters for reasoning models
+	if provider.Name() == "groq" {
+		// Check if this is a reasoning model that supports reasoning_effort
+		if isReasoningModel(modelName) {
+			if req.ExtraParams == nil {
+				req.ExtraParams = make(map[string]interface{})
+			}
+			req.ExtraParams["reasoning_effort"] = "none"
+		}
+	}
+
 	// Create a timeout context for this request
 	timeoutCtx, cancel := context.WithTimeout(ctx, r.config.RequestTimeout)
 	defer cancel()
@@ -309,4 +320,39 @@ func (r *Runner) GetResults() []BenchmarkResult {
 func (r *Runner) GetSummary() Summary {
 	results := r.GetResults()
 	return CalculateSummary(results)
+}
+
+// isReasoningModel checks if a Groq model supports the reasoning_effort parameter
+func isReasoningModel(modelName string) bool {
+	// List of Groq models that support reasoning_effort parameter
+	reasoningModels := []string{
+		"qwen/qwen3-32b",
+		"qwen/qwen3-110b",
+		"qwen/qwen3.5-110b",
+		"qwen/qwen3.5-32b",
+		"qwen/qwen3.5-7b",
+		"qwen/qwen3.5-14b",
+		"qwen/qwen3.5-72b",
+		"qwen/qwen3.5-32b-instruct",
+		"qwen/qwen3.5-110b-instruct",
+		"qwen/qwen3.5-7b-instruct",
+		"qwen/qwen3.5-14b-instruct",
+		"qwen/qwen3.5-72b-instruct",
+		"qwen/qwen3-32b-instruct",
+		"qwen/qwen3-110b-instruct",
+		"qwen/qwen3.5-32b-chat",
+		"qwen/qwen3.5-110b-chat",
+		"qwen/qwen3.5-7b-chat",
+		"qwen/qwen3.5-14b-chat",
+		"qwen/qwen3.5-72b-chat",
+		"qwen/qwen3-32b-chat",
+		"qwen/qwen3-110b-chat",
+	}
+
+	for _, model := range reasoningModels {
+		if model == modelName {
+			return true
+		}
+	}
+	return false
 } 
