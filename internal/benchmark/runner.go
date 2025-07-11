@@ -266,7 +266,7 @@ func (r *Runner) runSingleBenchmark(ctx context.Context, provider providers.Prov
 				metrics.Complete()
 				
 				// Calculate costs
-				cost := r.calculateCost(modelName, metrics.InputTokens, metrics.OutputTokens)
+				cost := r.calculateCost(provider.Name(), modelName, metrics.InputTokens, metrics.OutputTokens)
 				metrics.SetCost(cost)
 				
 				return metrics.ToBenchmarkResult(provider.Name(), modelName, promptFile.Name)
@@ -308,9 +308,9 @@ func (r *Runner) runSingleBenchmark(ctx context.Context, provider providers.Prov
 }
 
 // calculateCost calculates the cost for a benchmark run
-func (r *Runner) calculateCost(modelName string, inputTokens, outputTokens int) float64 {
+func (r *Runner) calculateCost(providerName, modelName string, inputTokens, outputTokens int) float64 {
 	// Get pricing from the model configuration
-	pricing, err := r.config.Models.GetModelPricing("openai", modelName) // TODO: Make provider dynamic
+	pricing, err := r.config.Models.GetModelPricing(providerName, modelName)
 	if err != nil {
 		// Return 0 cost if pricing not found
 		return 0.0
