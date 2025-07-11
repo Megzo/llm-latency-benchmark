@@ -31,6 +31,7 @@ type Config struct {
 
 	// CLI flags
 	Concurrent int
+	Runs       int
 	PromptsDir string
 	OutputFile string
 	Verbose    bool
@@ -62,6 +63,7 @@ func LoadConfig(modelsFile string) (*Config, error) {
 		AzureOpenAIAPIVersion: getEnvOrDefault("AZURE_OPENAI_API_VERSION", "2024-02-15-preview"),
 
 		Concurrent: 1,
+		Runs:       1,
 		PromptsDir: "prompts",
 		OutputFile: "",
 		Verbose:    false,
@@ -85,6 +87,10 @@ func LoadConfig(modelsFile string) (*Config, error) {
 func (c *Config) Validate() error {
 	if c.Concurrent < 1 {
 		return fmt.Errorf("concurrent must be at least 1")
+	}
+
+	if c.Runs < 1 {
+		return fmt.Errorf("runs must be at least 1")
 	}
 
 	if c.PromptsDir == "" {

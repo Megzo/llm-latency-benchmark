@@ -93,12 +93,25 @@ func (r *Runner) runSequential(ctx context.Context, promptFiles []config.PromptF
 				}
 
 				if r.verbose {
-					log.Printf("  Testing model: %s", modelName)
+					log.Printf("  Testing model: %s (%d runs)", modelName, r.config.Runs)
 				}
 
-				// Run the benchmark
-				result := r.runSingleBenchmark(ctx, provider, modelName, promptFile)
-				r.addResult(result)
+				// Run the benchmark multiple times
+				for run := 1; run <= r.config.Runs; run++ {
+					select {
+					case <-ctx.Done():
+						return ctx.Err()
+					default:
+					}
+
+					if r.verbose && r.config.Runs > 1 {
+						log.Printf("    Run %d/%d", run, r.config.Runs)
+					}
+
+					// Run the benchmark
+					result := r.runSingleBenchmark(ctx, provider, modelName, promptFile)
+					r.addResult(result)
+				}
 			}
 		}
 	}
@@ -113,8 +126,8 @@ func (r *Runner) runConcurrent(ctx context.Context, promptFiles []config.PromptF
 	}
 
 	// Create a channel to receive work items
-	// Estimate work items: promptFiles * providers * models per provider
-	estimatedWorkItems := len(promptFiles) * len(r.providers) * 5 // Assume ~5 models per provider
+	// Estimate work items: promptFiles * providers * models per provider * runs
+	estimatedWorkItems := len(promptFiles) * len(r.providers) * 5 * r.config.Runs // Assume ~5 models per provider
 	workChan := make(chan workItem, estimatedWorkItems)
 	defer close(workChan)
 
@@ -140,10 +153,12 @@ func (r *Runner) runConcurrent(ctx context.Context, promptFiles []config.PromptF
 				}
 
 				for _, modelName := range models {
-					select {
-					case <-ctx.Done():
-						return
-					case workChan <- workItem{promptFile: promptFile, provider: provider, modelName: modelName}:
+					for run := 1; run <= r.config.Runs; run++ {
+						select {
+						case <-ctx.Done():
+							return
+						case workChan <- workItem{promptFile: promptFile, provider: provider, modelName: modelName, run: run}:
+						}
 					}
 				}
 			}
@@ -161,6 +176,7 @@ type workItem struct {
 	promptFile config.PromptFile
 	provider   providers.Provider
 	modelName  string
+	run        int
 }
 
 // worker processes work items from the channel
@@ -177,7 +193,11 @@ func (r *Runner) worker(ctx context.Context, wg *sync.WaitGroup, workChan <-chan
 			}
 
 			if r.verbose {
-				log.Printf("Worker %d: Processing %s with model %s", workerID, work.promptFile.Name, work.modelName)
+				if r.config.Runs > 1 {
+					log.Printf("Worker %d: Processing %s with model %s (run %d/%d)", workerID, work.promptFile.Name, work.modelName, work.run, r.config.Runs)
+				} else {
+					log.Printf("Worker %d: Processing %s with model %s", workerID, work.promptFile.Name, work.modelName)
+				}
 			}
 
 			// Run the benchmark

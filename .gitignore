@@ -42,5 +42,6 @@ Thumbs.db
 llm-benchmark
 llm-benchmark.exe 
 
-# Custom model file for testing
+# Custom model file and prompts for testing
 mymodels.yaml
+myprompts/

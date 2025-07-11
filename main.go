@@ -21,6 +21,7 @@ func main() {
 	// Parse command line flags
 	var (
 		concurrent = flag.Int("concurrent", 1, "Number of concurrent requests")
+		runs       = flag.Int("runs", 1, "Number of runs per model per prompt")
 		promptsDir = flag.String("prompts", "prompts", "Directory containing prompt files")
 		outputFile = flag.String("output", "", "Output CSV file (default: results/benchmark_TIMESTAMP.csv)")
 		modelsFile = flag.String("models", "models.yaml", "Models configuration file (default: models.yaml)")
@@ -51,6 +52,7 @@ func main() {
 
 	// Override config with CLI flags
 	cfg.Concurrent = *concurrent
+	cfg.Runs = *runs
 	cfg.PromptsDir = *promptsDir
 	cfg.OutputFile = *outputFile
 	cfg.Verbose = *verbose
@@ -175,6 +177,7 @@ func main() {
 	fmt.Printf("LLM Benchmark Tool v%s\n", version)
 	fmt.Printf("Configuration loaded successfully\n")
 	fmt.Printf("Concurrent requests: %d\n", cfg.Concurrent)
+	fmt.Printf("Runs per model/prompt: %d\n", cfg.Runs)
 	fmt.Printf("Prompts directory: %s\n", cfg.PromptsDir)
 	fmt.Printf("Models file: %s\n", *modelsFile)
 	fmt.Printf("Output file: %s\n", cfg.GetOutputFile())
@@ -226,6 +229,8 @@ Usage:
 Flags:
   -concurrent int
         Number of concurrent requests (default 1)
+  -runs int
+        Number of runs per model per prompt (default 1)
   -prompts string
         Directory containing prompt files (default "prompts")
   -output string
@@ -245,6 +250,12 @@ Examples:
 
   # Concurrent execution
   llm-benchmark -concurrent 4
+
+  # Multiple runs per model/prompt for latency variance
+  llm-benchmark -runs 5
+
+  # Both concurrent and multiple runs
+  llm-benchmark -concurrent 4 -runs 5
 
   # Specify prompts directory
   llm-benchmark -prompts ./custom-prompts
