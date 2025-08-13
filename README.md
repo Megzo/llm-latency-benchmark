@@ -66,23 +66,43 @@ ANTHROPIC_API_KEY=sk-ant-...
 ### models.yaml
 ```yaml
 openai:
-  gpt-4-turbo:
-    input: 10.0   # $ per million tokens
-    output: 30.0
-  gpt-3.5-turbo:
-    input: 0.5
-    output: 1.5
-groq:
-  llama-3-70b:
-    input: 0.8
-    output: 0.8
-  mixtral-8x7b:
-    input: 0.27
-    output: 0.27
-anthropic:
-  claude-3-sonnet:
-    input: 3.0
-    output: 15.0
+  gpt-4.1:
+    token_price:
+      input: 2.0   # $ per million tokens
+      output: 8.0
+    parameters: {}
+  gpt-4.1-mini:
+    token_price:
+      input: 0.4
+      output: 1.6
+    parameters: {}
+  gpt-4.1-nano:
+    token_price:
+      input: 0.1
+      output: 0.4
+    parameters: {}
+
+openai_responses:
+  gpt-5-mini:
+    token_price:
+      input: 0.25
+      output: 2.0
+    parameters:
+      text:
+        format:
+          type: text
+        verbosity: low
+      reasoning:
+        effort: minimal
+        summary: null
+  gpt-5-chat-latest:
+    token_price:
+      input: 1.0
+      output: 8.0
+    parameters:
+      temperature: 0.7
+      top_p: 0.9
+      max_output_tokens: 4096
 ```
 
 ### Prompt Format (prompts/*.yaml)
@@ -107,6 +127,9 @@ user: |
 
 # Custom output file
 ./llm-benchmark --output results/my-benchmark.csv
+
+# Number of runs from each prompt
+./llm-benchmark --runs 10
 
 # Verbose logging
 ./llm-benchmark --verbose
