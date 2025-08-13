@@ -212,8 +212,8 @@ func (r *Runner) runSingleBenchmark(ctx context.Context, provider providers.Prov
 	// Create metrics for this run
 	metrics := NewMetrics()
 
-	// Create the chat request
-	req := providers.ChatRequest{
+    // Create the chat request
+    req := providers.ChatRequest{
 		Model:        modelName,
 		SystemPrompt: promptFile.Prompt.System,
 		UserPrompt:   promptFile.Prompt.User,
@@ -222,14 +222,23 @@ func (r *Runner) runSingleBenchmark(ctx context.Context, provider providers.Prov
 		TopP:         1.0,  // Default top_p
 	}
 
-	// Add Groq-specific parameters for reasoning models
+    // Apply per-model parameters from config (if present)
+    if params, err := r.config.Models.GetModelParameters(provider.Name(), modelName); err == nil && params != nil {
+        // Merge into ExtraParams map
+        req.ExtraParams = make(map[string]interface{}, len(params))
+        for k, v := range params {
+            req.ExtraParams[k] = v
+        }
+    }
+
+    // Add Groq-specific parameters for reasoning models (only if not already provided via model parameters)
 	if provider.Name() == "groq" {
 		// Check if this is a reasoning model that supports reasoning_effort
 		if isReasoningModel(modelName) {
-			if req.ExtraParams == nil {
-				req.ExtraParams = make(map[string]interface{})
-			}
-			req.ExtraParams["reasoning_effort"] = "none"
+            if req.ExtraParams == nil || req.ExtraParams["reasoning_effort"] == nil {
+                if req.ExtraParams == nil { req.ExtraParams = make(map[string]interface{}) }
+                req.ExtraParams["reasoning_effort"] = "none"
+            }
 		}
 	}
 

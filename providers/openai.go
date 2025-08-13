@@ -1,12 +1,17 @@
 package providers
 
 import (
-	"context"
-	"strings"
-	"time"
+    "bufio"
+    "bytes"
+    "context"
+    "encoding/json"
+    "io"
+    "net/http"
+    "strings"
+    "time"
 
-	"github.com/openai/openai-go"
-	"github.com/openai/openai-go/option"
+    "github.com/openai/openai-go/v2"
+    "github.com/openai/openai-go/v2/option"
 )
 
 // OpenAIProvider implements the Provider interface for OpenAI
@@ -47,80 +52,82 @@ func (p *OpenAIProvider) Name() string {
 func (p *OpenAIProvider) StreamChat(ctx context.Context, req ChatRequest) (<-chan ChatResponse, error) {
 	responseChan := make(chan ChatResponse)
 
-	// Build messages for OpenAI API
-	messages := []openai.ChatCompletionMessageParamUnion{}
-	if req.SystemPrompt != "" {
-		messages = append(messages, openai.SystemMessage(req.SystemPrompt))
-	}
-	messages = append(messages, openai.UserMessage(req.UserPrompt))
+    // If arbitrary extra params provided, use direct HTTP to allow full passthrough
+    if req.ExtraParams != nil && len(req.ExtraParams) > 0 {
+        go p.streamChatDirect(ctx, req, responseChan)
+        return responseChan, nil
+    }
 
-	chatReq := openai.ChatCompletionNewParams{
-		Model:    openai.ChatModel(req.Model),
-		Messages: messages,
-	}
-	if req.MaxTokens > 0 {
-		// Some newer OpenAI models (e.g., gpt-5, gpt-4.1, gpt-4o, o3/o4) reject "max_tokens"
-		// and require "max_completion_tokens" (available via the Responses API).
-		// To maintain compatibility with the Chat Completions API, avoid sending
-		// max_tokens for those models to prevent a 400 error.
-		if !requiresMaxCompletionTokens(req.Model) {
-			chatReq.MaxTokens = openai.Int(int64(req.MaxTokens))
-		}
-	}
-	if req.Temperature > 0 {
-		if !disallowsSamplingParameters(req.Model) {
-			chatReq.Temperature = openai.Float(req.Temperature)
-		}
-	}
-	if req.TopP > 0 {
-		if !disallowsSamplingParameters(req.Model) {
-			chatReq.TopP = openai.Float(req.TopP)
-		}
-	}
+    // Build messages for OpenAI API (SDK path)
+    messages := []openai.ChatCompletionMessageParamUnion{}
+    if req.SystemPrompt != "" {
+        messages = append(messages, openai.SystemMessage(req.SystemPrompt))
+    }
+    messages = append(messages, openai.UserMessage(req.UserPrompt))
 
-	go func() {
-		defer close(responseChan)
+    chatReq := openai.ChatCompletionNewParams{
+        Model:    openai.ChatModel(req.Model),
+        Messages: messages,
+    }
+    if req.MaxTokens > 0 {
+        if !requiresMaxCompletionTokens(req.Model) {
+            chatReq.MaxTokens = openai.Int(int64(req.MaxTokens))
+        }
+    }
+    if req.Temperature > 0 {
+        if !disallowsSamplingParameters(req.Model) {
+            chatReq.Temperature = openai.Float(req.Temperature)
+        }
+    }
+    if req.TopP > 0 {
+        if !disallowsSamplingParameters(req.Model) {
+            chatReq.TopP = openai.Float(req.TopP)
+        }
+    }
 
-		// Create streaming completion
-		stream := p.client.Chat.Completions.NewStreaming(ctx, chatReq)
+    go func() {
+        defer close(responseChan)
 
-		for stream.Next() {
-			resp := stream.Current()
-			if len(resp.Choices) > 0 {
-				choice := resp.Choices[0]
-				if choice.Delta.Content != "" {
-					responseChan <- ChatResponse{
-						Content:    choice.Delta.Content,
-						IsComplete: false,
-						Timestamp:  time.Now(),
-					}
-				}
-			}
-		}
+        // Create streaming completion
+        stream := p.client.Chat.Completions.NewStreaming(ctx, chatReq)
 
-		// Check for errors
-		if err := stream.Err(); err != nil {
-			responseChan <- ChatResponse{
-				Content:    "",
-				IsComplete: true,
-				Timestamp:  time.Now(),
-				Error: &ProviderError{
-					Provider: "openai",
-					Message:  "failed to receive stream response",
-					Cause:    err,
-				},
-			}
-			return
-		}
+        for stream.Next() {
+            resp := stream.Current()
+            if len(resp.Choices) > 0 {
+                choice := resp.Choices[0]
+                if choice.Delta.Content != "" {
+                    responseChan <- ChatResponse{
+                        Content:    choice.Delta.Content,
+                        IsComplete: false,
+                        Timestamp:  time.Now(),
+                    }
+                }
+            }
+        }
 
-		// Stream completed successfully
-		responseChan <- ChatResponse{
-			Content:    "",
-			IsComplete: true,
-			Timestamp:  time.Now(),
-		}
-	}()
-	return responseChan, nil
+        // Check for errors
+        if err := stream.Err(); err != nil {
+            responseChan <- ChatResponse{
+                Content:    "",
+                IsComplete: true,
+                Timestamp:  time.Now(),
+                Error: &ProviderError{
+                    Provider: "openai",
+                    Message:  "failed to receive stream response",
+                    Cause:    err,
+                },
+            }
+            return
+        }
+
+        // Stream completed successfully
+        responseChan <- ChatResponse{
+            Content:    "",
+            IsComplete: true,
+            Timestamp:  time.Now(),
+        }
+    }()
+    return responseChan, nil
 }
 
 // requiresMaxCompletionTokens returns true for models that reject the legacy
@@ -143,6 +150,119 @@ func disallowsSamplingParameters(model string) bool {
 		strings.HasPrefix(m, "gpt-4o") ||
 		strings.HasPrefix(m, "o3") ||
 		strings.HasPrefix(m, "o4")
+}
+
+// streamChatDirect performs streaming chat using direct HTTP API with full parameter passthrough
+func (p *OpenAIProvider) streamChatDirect(ctx context.Context, req ChatRequest, responseChan chan<- ChatResponse) {
+    defer close(responseChan)
+
+    baseURL := strings.TrimRight(p.getBaseURL(), "/")
+    endpoint := baseURL + "/chat/completions"
+
+    // Build messages array
+    messages := []map[string]interface{}{}
+    if strings.TrimSpace(req.SystemPrompt) != "" {
+        messages = append(messages, map[string]interface{}{"role": "system", "content": req.SystemPrompt})
+    }
+    messages = append(messages, map[string]interface{}{"role": "user", "content": req.UserPrompt})
+
+    // Base payload
+    payloadMap := map[string]interface{}{
+        "model":   req.Model,
+        "messages": messages,
+        "stream":  true,
+    }
+
+    // Standard params
+    if req.MaxTokens > 0 && !requiresMaxCompletionTokens(req.Model) {
+        payloadMap["max_tokens"] = req.MaxTokens
+    }
+    if req.Temperature > 0 && !disallowsSamplingParameters(req.Model) {
+        payloadMap["temperature"] = req.Temperature
+    }
+    if req.TopP > 0 && !disallowsSamplingParameters(req.Model) {
+        payloadMap["top_p"] = req.TopP
+    }
+
+    // Merge ExtraParams
+    if req.ExtraParams != nil {
+        for k, v := range req.ExtraParams {
+            if k == "model" || k == "stream" || k == "messages" {
+                continue
+            }
+            payloadMap[k] = v
+        }
+    }
+
+    // Marshal
+    body, err := json.Marshal(payloadMap)
+    if err != nil {
+        responseChan <- ChatResponse{IsComplete: true, Timestamp: time.Now(), Error: &ProviderError{Provider: p.Name(), Message: "failed to marshal request", Cause: err}}
+        return
+    }
+
+    // HTTP request
+    httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(body))
+    if err != nil {
+        responseChan <- ChatResponse{IsComplete: true, Timestamp: time.Now(), Error: &ProviderError{Provider: p.Name(), Message: "failed to create HTTP request", Cause: err}}
+        return
+    }
+    httpReq.Header.Set("Content-Type", "application/json")
+    httpReq.Header.Set("Authorization", "Bearer "+p.config.APIKey)
+    httpReq.Header.Set("Accept", "text/event-stream")
+
+    client := &http.Client{}
+    resp, err := client.Do(httpReq)
+    if err != nil {
+        responseChan <- ChatResponse{IsComplete: true, Timestamp: time.Now(), Error: &ProviderError{Provider: p.Name(), Message: "failed to make HTTP request", Cause: err}}
+        return
+    }
+    defer resp.Body.Close()
+
+    if resp.StatusCode != http.StatusOK {
+        b, _ := io.ReadAll(resp.Body)
+        responseChan <- ChatResponse{IsComplete: true, Timestamp: time.Now(), Error: &ProviderError{Provider: p.Name(), Message: strings.TrimSpace(string(b))}}
+        return
+    }
+
+    reader := bufio.NewReader(resp.Body)
+    for {
+        line, err := reader.ReadString('\n')
+        if err != nil {
+            if err == io.EOF { break }
+            responseChan <- ChatResponse{IsComplete: true, Timestamp: time.Now(), Error: &ProviderError{Provider: p.Name(), Message: "failed to read response stream", Cause: err}}
+            return
+        }
+        line = strings.TrimSpace(line)
+        if line == "" { continue }
+        if strings.HasPrefix(line, "data: ") {
+            data := strings.TrimPrefix(line, "data: ")
+            if data == "[DONE]" { break }
+            // Parse minimal fields from Chat API delta
+            var s struct {
+                Choices []struct {
+                    Delta struct {
+                        Content string `json:"content"`
+                    } `json:"delta"`
+                } `json:"choices"`
+            }
+            if err := json.Unmarshal([]byte(data), &s); err == nil {
+                if len(s.Choices) > 0 {
+                    if c := s.Choices[0].Delta.Content; c != "" {
+                        responseChan <- ChatResponse{Content: c, IsComplete: false, Timestamp: time.Now()}
+                    }
+                }
+            }
+        }
+    }
+    responseChan <- ChatResponse{IsComplete: true, Timestamp: time.Now()}
+}
+
+func (p *OpenAIProvider) getBaseURL() string {
+    if strings.TrimSpace(p.config.BaseURL) != "" {
+        return strings.TrimRight(p.config.BaseURL, "/")
+    }
+    return "https://api.openai.com/v1"
 }
 
 // TokenCount returns the token counts for a response

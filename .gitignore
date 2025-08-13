@@ -45,3 +45,5 @@ llm-benchmark.exe
 # Custom model file and prompts for testing
 mymodels.yaml
 myprompts/
+gpt-5/
+results/

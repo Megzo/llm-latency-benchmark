@@ -67,6 +67,16 @@ func (f *ProviderFactory) createProvider(providerName string) (Provider, error) 
 		}
 		return NewOpenAIProvider(config)
 
+	case "openai_responses":
+		config, ok := f.configs["openai"].(*OpenAIConfig)
+		if !ok {
+			return nil, &ConfigurationError{
+				Field:   "openai_config",
+				Message: "OpenAI configuration not found or invalid",
+			}
+		}
+		return NewOpenAIResponsesProvider(config)
+
 	case "groq":
 		config, ok := f.configs[providerName].(*GroqConfig)
 		if !ok {
@@ -126,6 +136,7 @@ func (f *ProviderFactory) ClearProviders() {
 func (f *ProviderFactory) GetAvailableProviders() []string {
 	return []string{
 		"openai",
+        "openai_responses",
 		"groq",
 		"anthropic",
 		"azure_openai",

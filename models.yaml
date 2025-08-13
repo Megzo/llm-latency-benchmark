@@ -1,45 +1,69 @@
 openai:
   gpt-4.1:
-    input: 2.0   # $ per million tokens
-    output: 8.0
+    token_price:
+      input: 2.0   # $ per million tokens
+      output: 8.0
+    parameters: {}
   gpt-4.1-mini:
-    input: 0.4
-    output: 1.6
+    token_price:
+      input: 0.4
+      output: 1.6
+    parameters: {}
   gpt-4.1-nano:
-    input: 0.1
-    output: 0.4
+    token_price:
+      input: 0.1
+      output: 0.4
+    parameters: {}
 
 azure_openai:
   gpt-4o:
-    input: 2.5 
-    output: 10.0
+    token_price:
+      input: 2.5 
+      output: 10.0
+    parameters: {}
   gpt-4.1-mini:
-    input: 0.4
-    output: 1.6
+    token_price:
+      input: 0.4
+      output: 1.6
+    parameters: {}
 
 groq:
   qwen/qwen3-32b:
-    input: 0.29
-    output: 0.59
+    token_price:
+      input: 0.29
+      output: 0.59
+    parameters: {}
   meta-llama/llama-4-maverick-17b-128e-instruct:
-    input: 0.2
-    output: 0.6 
+    token_price:
+      input: 0.2
+      output: 0.6 
+    parameters: {}
   meta-llama/llama-4-scout-17b-16e-instruct:
-    input: 0.11
-    output: 0.38 
+    token_price:
+      input: 0.11
+      output: 0.38 
+    parameters: {}
 
 anthropic:
   claude-3-5-haiku-20241022:
-    input: 0.8
-    output: 4
+    token_price:
+      input: 0.8
+      output: 4
+    parameters: {}
   claude-sonnet-4-20250514:
-    input: 3
-    output: 15
+    token_price:
+      input: 3
+      output: 15
+    parameters: {}
 
 gemini:
   gemini-2.5-flash:
-    input: 0.3
-    output: 2.5
+    token_price:
+      input: 0.3
+      output: 2.5
+    parameters: {}
   gemini-2.5-flash-lite-preview-06-17:
-    input: 0.1
-    output: 0.40
+    token_price:
+      input: 0.1
+      output: 0.40
+    parameters: {}

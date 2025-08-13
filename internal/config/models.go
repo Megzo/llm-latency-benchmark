@@ -7,13 +7,20 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// ModelsConfig holds the pricing configuration for all models
+// ModelsConfig holds the pricing and parameter configuration for all models
 type ModelsConfig struct {
-	OpenAI   map[string]ModelPricing `yaml:"openai"`
-	Groq     map[string]ModelPricing `yaml:"groq"`
-	Anthropic map[string]ModelPricing `yaml:"anthropic"`
-	AzureOpenAI map[string]ModelPricing `yaml:"azure_openai"`
-	Gemini   map[string]ModelPricing `yaml:"gemini"`
+	OpenAI       map[string]ModelSpec `yaml:"openai"`
+    OpenAIResponses map[string]ModelSpec `yaml:"openai_responses"`
+	Groq         map[string]ModelSpec `yaml:"groq"`
+	Anthropic    map[string]ModelSpec `yaml:"anthropic"`
+	AzureOpenAI  map[string]ModelSpec `yaml:"azure_openai"`
+	Gemini       map[string]ModelSpec `yaml:"gemini"`
+}
+
+// ModelSpec defines token pricing and optional provider-specific parameters
+type ModelSpec struct {
+	TokenPrice ModelPricing            `yaml:"token_price"`
+	Parameters map[string]interface{} `yaml:"parameters"`
 }
 
 // ModelPricing holds the pricing information for a specific model
@@ -39,25 +46,55 @@ func LoadModelsConfig(filename string) (*ModelsConfig, error) {
 
 // GetModelPricing returns the pricing for a specific model
 func (c *ModelsConfig) GetModelPricing(provider, model string) (*ModelPricing, error) {
-	var pricing map[string]ModelPricing
+	var specs map[string]ModelSpec
 
 	switch provider {
 	case "openai":
-		pricing = c.OpenAI
+		specs = c.OpenAI
+	case "openai_responses":
+        specs = c.OpenAIResponses
 	case "groq":
-		pricing = c.Groq
+		specs = c.Groq
 	case "anthropic":
-		pricing = c.Anthropic
+		specs = c.Anthropic
 	case "azure_openai":
-		pricing = c.AzureOpenAI
+		specs = c.AzureOpenAI
 	case "gemini":
-		pricing = c.Gemini
+		specs = c.Gemini
 	default:
 		return nil, fmt.Errorf("unknown provider: %s", provider)
 	}
 
-	if modelPricing, exists := pricing[model]; exists {
-		return &modelPricing, nil
+	if spec, exists := specs[model]; exists {
+		return &spec.TokenPrice, nil
+	}
+
+	return nil, fmt.Errorf("model %s not found for provider %s", model, provider)
+}
+
+// GetModelParameters returns the parameters map for a specific model (may be nil)
+func (c *ModelsConfig) GetModelParameters(provider, model string) (map[string]interface{}, error) {
+	var specs map[string]ModelSpec
+
+	switch provider {
+	case "openai":
+		specs = c.OpenAI
+	case "openai_responses":
+        specs = c.OpenAIResponses
+	case "groq":
+		specs = c.Groq
+	case "anthropic":
+		specs = c.Anthropic
+	case "azure_openai":
+		specs = c.AzureOpenAI
+	case "gemini":
+		specs = c.Gemini
+	default:
+		return nil, fmt.Errorf("unknown provider: %s", provider)
+	}
+
+	if spec, exists := specs[model]; exists {
+		return spec.Parameters, nil
 	}
 
 	return nil, fmt.Errorf("model %s not found for provider %s", model, provider)
@@ -72,27 +109,29 @@ func (p *ModelPricing) CalculateCost(inputTokens, outputTokens int) float64 {
 
 // ListModels returns all available models for a provider
 func (c *ModelsConfig) ListModels(provider string) ([]string, error) {
-	var models map[string]ModelPricing
+	var specs map[string]ModelSpec
 
 	switch provider {
 	case "openai":
-		models = c.OpenAI
+		specs = c.OpenAI
+	case "openai_responses":
+        specs = c.OpenAIResponses
 	case "groq":
-		models = c.Groq
+		specs = c.Groq
 	case "anthropic":
-		models = c.Anthropic
+		specs = c.Anthropic
 	case "azure_openai":
-		models = c.AzureOpenAI
+		specs = c.AzureOpenAI
 	case "gemini":
-		models = c.Gemini
+		specs = c.Gemini
 	default:
 		return nil, fmt.Errorf("unknown provider: %s", provider)
 	}
 
-	modelNames := make([]string, 0, len(models))
-	for modelName := range models {
+	modelNames := make([]string, 0, len(specs))
+	for modelName := range specs {
 		modelNames = append(modelNames, modelName)
 	}
 
 	return modelNames, nil
-} 
+}

@@ -90,12 +90,14 @@ func TestProviderFactory_GetAvailableProviders(t *testing.T) {
 	factory := NewProviderFactory()
 
 	// Check available providers
-	providers := factory.GetAvailableProviders()
-	assert.Len(t, providers, 4)
-	assert.Contains(t, providers, "openai")
-	assert.Contains(t, providers, "groq")
-	assert.Contains(t, providers, "anthropic")
-	assert.Contains(t, providers, "azure_openai")
+    providers := factory.GetAvailableProviders()
+    assert.Len(t, providers, 6)
+    assert.Contains(t, providers, "openai")
+    assert.Contains(t, providers, "openai_responses")
+    assert.Contains(t, providers, "groq")
+    assert.Contains(t, providers, "anthropic")
+    assert.Contains(t, providers, "azure_openai")
+    assert.Contains(t, providers, "gemini")
 }
 
 func TestProviderFactory_ClearProviders(t *testing.T) {

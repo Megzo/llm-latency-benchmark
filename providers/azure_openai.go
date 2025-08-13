@@ -5,9 +5,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/openai/openai-go"
-	"github.com/openai/openai-go/azure"
-	"github.com/openai/openai-go/option"
+    "github.com/openai/openai-go/v2"
+    "github.com/openai/openai-go/v2/azure"
+    "github.com/openai/openai-go/v2/option"
 )
 
 // AzureOpenAIProvider implements the Provider interface for Azure OpenAI

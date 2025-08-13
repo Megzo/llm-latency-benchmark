@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/openai/openai-go"
-	"github.com/openai/openai-go/option"
+    "github.com/openai/openai-go/v2"
+    "github.com/openai/openai-go/v2/option"
 )
 
 // GroqProvider implements the Provider interface for Groq
@@ -126,8 +126,8 @@ func (p *GroqProvider) streamChatDirect(ctx context.Context, req ChatRequest, re
 	}
 	messages = append(messages, Message{Role: "user", Content: req.UserPrompt})
 
-	// Build Groq-specific request
-	groqReq := GroqChatRequest{
+    // Build Groq-specific request
+    groqReq := GroqChatRequest{
 		Model:   req.Model,
 		Messages: messages,
 		Stream:  true,
@@ -142,9 +142,29 @@ func (p *GroqProvider) streamChatDirect(ctx context.Context, req ChatRequest, re
 	if req.TopP > 0 {
 		groqReq.TopP = &req.TopP
 	}
-	if reasoningEffort != nil {
+    if reasoningEffort != nil {
 		groqReq.ReasoningEffort = reasoningEffort
 	}
+
+    // Map OpenAI-compatible extras if present
+    if req.ExtraParams != nil {
+        // response_format -> ignore for now (Groq may not support)
+        // tools -> ignore unless Groq supports
+        if stops, ok := req.ExtraParams["stop"].([]string); ok {
+            groqReq.Stop = stops
+        }
+        if stopsIface, ok := req.ExtraParams["stop"].([]interface{}); ok {
+            // Convert []interface{} to []string
+            ss := make([]string, 0, len(stopsIface))
+            for _, s := range stopsIface {
+                if str, ok := s.(string); ok { ss = append(ss, str) }
+            }
+            if len(ss) > 0 { groqReq.Stop = ss }
+        }
+        if t, ok := req.ExtraParams["temperature"].(float64); ok { groqReq.Temperature = &t }
+        if tp, ok := req.ExtraParams["top_p"].(float64); ok { groqReq.TopP = &tp }
+        if mct, ok := req.ExtraParams["max_completion_tokens"].(int); ok { groqReq.MaxCompletionTokens = &mct }
+    }
 
 	// Marshal request
 	reqBody, err := json.Marshal(groqReq)

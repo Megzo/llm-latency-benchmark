@@ -13,18 +13,31 @@ func TestLoadConfig(t *testing.T) {
 	defer os.Remove(tempFile)
 
 	// Test valid config
-	validConfig := `
+    validConfig := `
 openai:
   gpt-4o-mini:
-    input: 0.15
-    output: 0.6
+    token_price:
+      input: 0.15
+      output: 0.6
+    parameters:
+      text:
+        format:
+          type: text
+        verbosity: low
+      reasoning:
+        effort: minimal
+        summary: null
   gpt-3.5-turbo:
-    input: 0.5
-    output: 1.5
+    token_price:
+      input: 0.5
+      output: 1.5
+    parameters: {}
 groq:
   llama-3.1-8b:
-    input: 0.05
-    output: 0.1
+    token_price:
+      input: 0.05
+      output: 0.1
+    parameters: {}
 `
 
 	err := os.WriteFile(tempFile, []byte(validConfig), 0644)
@@ -46,23 +59,23 @@ groq:
 	}
 
 	// Check OpenAI models
-	if len(config.Models.OpenAI) != 2 {
+    if len(config.Models.OpenAI) != 2 {
 		t.Errorf("Expected 2 OpenAI models, got %d", len(config.Models.OpenAI))
 	}
 
 	// Check specific model configuration
-	gpt4oMini, exists := config.Models.OpenAI["gpt-4o-mini"]
+    gpt4oMini, exists := config.Models.OpenAI["gpt-4o-mini"]
 	if !exists {
 		t.Fatal("gpt-4o-mini model not found in config")
 	}
 
-	if gpt4oMini.Input != 0.15 {
-		t.Errorf("Expected input cost 0.15, got %f", gpt4oMini.Input)
-	}
+    if gpt4oMini.TokenPrice.Input != 0.15 {
+        t.Errorf("Expected input cost 0.15, got %f", gpt4oMini.TokenPrice.Input)
+    }
 
-	if gpt4oMini.Output != 0.6 {
-		t.Errorf("Expected output cost 0.6, got %f", gpt4oMini.Output)
-	}
+    if gpt4oMini.TokenPrice.Output != 0.6 {
+        t.Errorf("Expected output cost 0.6, got %f", gpt4oMini.TokenPrice.Output)
+    }
 }
 
 func TestLoadConfig_InvalidFile(t *testing.T) {
@@ -76,11 +89,12 @@ func TestLoadConfig_InvalidYAML(t *testing.T) {
 	tempFile := "test_invalid_config.yaml"
 	defer os.Remove(tempFile)
 
-	invalidConfig := `
+    invalidConfig := `
 openai:
   gpt-4o-mini:
-    input: "invalid"  # Should be float
-    output: 0.6
+    token_price:
+      input: "invalid"  # Should be float
+      output: 0.6
 `
 
 	err := os.WriteFile(tempFile, []byte(invalidConfig), 0644)
@@ -166,20 +180,20 @@ func TestModelPricing_CalculateCost(t *testing.T) {
 }
 
 func TestModelsConfig_GetModelPricing(t *testing.T) {
-	config := &ModelsConfig{
-		OpenAI: map[string]ModelPricing{
-			"gpt-4o-mini": {
-				Input:  0.15,
-				Output: 0.6,
-			},
-		},
-		Groq: map[string]ModelPricing{
-			"llama-3.1-8b": {
-				Input:  0.05,
-				Output: 0.1,
-			},
-		},
-	}
+    config := &ModelsConfig{
+        OpenAI: map[string]ModelSpec{
+            "gpt-4o-mini": {
+                TokenPrice: ModelPricing{Input: 0.15, Output: 0.6},
+                Parameters: nil,
+            },
+        },
+        Groq: map[string]ModelSpec{
+            "llama-3.1-8b": {
+                TokenPrice: ModelPricing{Input: 0.05, Output: 0.1},
+                Parameters: nil,
+            },
+        },
+    }
 
 	tests := []struct {
 		name     string

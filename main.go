@@ -101,6 +101,16 @@ func main() {
 			providerMap["openai"] = provider
 			fmt.Printf("OpenAI provider created successfully\n")
 		}
+
+		// Also initialize the Responses API variant
+		fmt.Printf("Creating OpenAI Responses provider...\n")
+		respProvider, err := factory.GetProvider("openai_responses")
+		if err != nil {
+			log.Printf("Warning: Failed to create OpenAI Responses provider: %v", err)
+		} else {
+			providerMap["openai_responses"] = respProvider
+			fmt.Printf("OpenAI Responses provider created successfully\n")
+		}
 	} else {
 		fmt.Printf("No OpenAI API key found\n")
 	}
