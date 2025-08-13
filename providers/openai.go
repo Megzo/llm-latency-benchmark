@@ -59,21 +59,31 @@ func (p *OpenAIProvider) StreamChat(ctx context.Context, req ChatRequest) (<-cha
 		Messages: messages,
 	}
 	if req.MaxTokens > 0 {
-		chatReq.MaxTokens = openai.Int(int64(req.MaxTokens))
+		// Some newer OpenAI models (e.g., gpt-5, gpt-4.1, gpt-4o, o3/o4) reject "max_tokens"
+		// and require "max_completion_tokens" (available via the Responses API).
+		// To maintain compatibility with the Chat Completions API, avoid sending
+		// max_tokens for those models to prevent a 400 error.
+		if !requiresMaxCompletionTokens(req.Model) {
+			chatReq.MaxTokens = openai.Int(int64(req.MaxTokens))
+		}
 	}
 	if req.Temperature > 0 {
-		chatReq.Temperature = openai.Float(req.Temperature)
+		if !disallowsSamplingParameters(req.Model) {
+			chatReq.Temperature = openai.Float(req.Temperature)
+		}
 	}
 	if req.TopP > 0 {
-		chatReq.TopP = openai.Float(req.TopP)
+		if !disallowsSamplingParameters(req.Model) {
+			chatReq.TopP = openai.Float(req.TopP)
+		}
 	}
 
 	go func() {
 		defer close(responseChan)
-		
+
 		// Create streaming completion
 		stream := p.client.Chat.Completions.NewStreaming(ctx, chatReq)
-		
+
 		for stream.Next() {
 			resp := stream.Current()
 			if len(resp.Choices) > 0 {
@@ -87,7 +97,7 @@ func (p *OpenAIProvider) StreamChat(ctx context.Context, req ChatRequest) (<-cha
 				}
 			}
 		}
-		
+
 		// Check for errors
 		if err := stream.Err(); err != nil {
 			responseChan <- ChatResponse{
@@ -102,7 +112,7 @@ func (p *OpenAIProvider) StreamChat(ctx context.Context, req ChatRequest) (<-cha
 			}
 			return
 		}
-		
+
 		// Stream completed successfully
 		responseChan <- ChatResponse{
 			Content:    "",
@@ -111,6 +121,28 @@ func (p *OpenAIProvider) StreamChat(ctx context.Context, req ChatRequest) (<-cha
 		}
 	}()
 	return responseChan, nil
+}
+
+// requiresMaxCompletionTokens returns true for models that reject the legacy
+// "max_tokens" parameter on the Chat Completions API.
+func requiresMaxCompletionTokens(model string) bool {
+	m := strings.ToLower(strings.TrimSpace(model))
+	return strings.HasPrefix(m, "gpt-5") ||
+		strings.HasPrefix(m, "gpt-4.1") ||
+		strings.HasPrefix(m, "gpt-4o") ||
+		strings.HasPrefix(m, "o3") ||
+		strings.HasPrefix(m, "o4")
+}
+
+// disallowsSamplingParameters returns true for models that do not accept
+// temperature/top_p overrides and require default values.
+func disallowsSamplingParameters(model string) bool {
+	m := strings.ToLower(strings.TrimSpace(model))
+	return strings.HasPrefix(m, "gpt-5") ||
+		strings.HasPrefix(m, "gpt-4.1") ||
+		strings.HasPrefix(m, "gpt-4o") ||
+		strings.HasPrefix(m, "o3") ||
+		strings.HasPrefix(m, "o4")
 }
 
 // TokenCount returns the token counts for a response
@@ -127,7 +159,7 @@ func (p *OpenAIProvider) TokenCount(response ChatResponse) (input, output, total
 			output = 1
 		}
 	}
-	
+
 	return 0, output, output
 }
 
@@ -189,22 +221,22 @@ func (p *OpenAIProvider) IsRetryableError(err error) bool {
 	}
 
 	// Check for rate limit errors
-	if strings.Contains(err.Error(), "rate_limit") || 
-	   strings.Contains(err.Error(), "429") {
+	if strings.Contains(err.Error(), "rate_limit") ||
+		strings.Contains(err.Error(), "429") {
 		return true
 	}
 
 	// Check for server errors
 	if strings.Contains(err.Error(), "500") ||
-	   strings.Contains(err.Error(), "502") ||
-	   strings.Contains(err.Error(), "503") ||
-	   strings.Contains(err.Error(), "504") {
+		strings.Contains(err.Error(), "502") ||
+		strings.Contains(err.Error(), "503") ||
+		strings.Contains(err.Error(), "504") {
 		return true
 	}
 
 	// Check for timeout errors
 	if strings.Contains(err.Error(), "timeout") ||
-	   strings.Contains(err.Error(), "context deadline exceeded") {
+		strings.Contains(err.Error(), "context deadline exceeded") {
 		return true
 	}
 
@@ -215,7 +247,7 @@ func (p *OpenAIProvider) IsRetryableError(err error) bool {
 func (p *OpenAIProvider) GetRetryDelay(attempt int, err error) time.Duration {
 	// Base delay with exponential backoff
 	baseDelay := time.Duration(attempt*attempt) * time.Second
-	
+
 	// Cap at 30 seconds
 	if baseDelay > 30*time.Second {
 		baseDelay = 30 * time.Second
@@ -224,4 +256,4 @@ func (p *OpenAIProvider) GetRetryDelay(attempt int, err error) time.Duration {
 	// Add jitter to prevent thundering herd
 	jitter := time.Duration(attempt) * 100 * time.Millisecond
 	return baseDelay + jitter
-} 
+}

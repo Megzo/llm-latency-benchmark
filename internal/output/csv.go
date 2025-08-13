@@ -103,9 +103,15 @@ func getErrorMessage(err error) string {
 }
 
 // truncateResponse truncates response to reasonable length for CSV
+// Set to 0 to disable truncation entirely
+const maxResponseLength = 0 // 0 = no truncation, or set to desired limit (e.g., 10000)
+
 func truncateResponse(response string) string {
-	if len(response) > 1000 {
-		return response[:1000] + "..."
+	if maxResponseLength == 0 {
+		return response // No truncation
+	}
+	if len(response) > maxResponseLength {
+		return response[:maxResponseLength] + "..."
 	}
 	return response
 }
